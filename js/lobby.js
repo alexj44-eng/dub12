@@ -29,7 +29,7 @@ function buildLobby(){
   const plat=new U.Mesh(new U.CylinderGeometry(42,44,3,48),std(0x141a30,{roughness:.4,metalness:.3}));plat.position.y=6;plat.receiveShadow=true;lobby.add(plat);
   const ring=new U.Mesh(new U.TorusGeometry(43,1.1,8,72),new U.MeshBasicMaterial({color:0xffd23f}));ring.rotation.x=Math.PI/2;ring.position.y=7.6;lobby.add(ring);
   lobby.add(new U.HemisphereLight(0xcfd8ff,0x7a6a70,.6));
-  const key=new U.DirectionalLight(0xffd6b0,1.9);key.position.set(320,420,360);key.target.position.set(0,40,0);key.castShadow=true;key.shadow.mapSize.set(2048,2048);
+  const key=new U.DirectionalLight(0xfff0e2,1.9);key.position.set(320,420,360);key.target.position.set(0,40,0);key.castShadow=true;key.shadow.mapSize.set(2048,2048);
   const kc=key.shadow.camera;kc.left=-260;kc.right=260;kc.top=260;kc.bottom=-260;kc.near=50;kc.far=1600;key.shadow.bias=-.0005;lobby.add(key,key.target);
   const rim=new U.DirectionalLight(0x8fb8ff,.55);rim.position.set(-300,200,-400);lobby.add(rim);
 }
@@ -53,8 +53,9 @@ function thumbSetup(){
   sc.add(new U.HemisphereLight(0xffffff,0x606080,.45));const k=new U.DirectionalLight(0xffffff,.75);k.position.set(40,80,90);sc.add(k);
   const rd=makeRider();sc.add(rd.root);const cam=new U.PerspectiveCamera(28,1,1,1000);
   TR={r,sc,rd,cam,c};}
-const FRAMES={jacket:[[22,44,74],[0,37,0]],pants:[[20,20,70],[0,15,0]],gloves:[[26,30,30],[10,23,2]],helmet:[[16,55,26],[0,51,1]],goggles:[[8,52,23],[0,51,2]],
-  boots:[[22,13,22],[4.6,5,1]],hair:[[-16,51,-24],[0,48,-1]],face:[[4,51,20],[0,50,3]],body:[[30,34,110],[0,28,0]]};
+// thumbnail shots, tuned to the realistic-proportion rider (taller, head at 84%)
+const FRAMES={jacket:[[22,47,78],[0,39,0]],pants:[[20,21,76],[0,16,0]],gloves:[[26,31,30],[10,24,2]],helmet:[[13.5,57.2,22],[0,53.4,1]],goggles:[[7,54.2,19.5],[0,53.3,2]],
+  boots:[[22,13,22],[4.6,5,1]],hair:[[-13.5,53.6,-20],[0,51,-1]],face:[[3.4,53.2,17],[0,52.4,3]],body:[[30,36,116],[0,30,0]]};
 function thumb(key,load,bd,frame,gogUp,grab){if(THUMB[key])return THUMB[key];if(!TR)thumbSetup();
   TR.rd.apply(load,bd);TR.rd.root.scale.setScalar(1);TR.rd.root.rotation.y=frame==='hair'?0:.35;
   for(let i=0;i<3;i++)TR.rd.pose(grab?{air:true,grab,crouch:.3}:{idle:true,crouch:.05,gogUp:!!gogUp},10);

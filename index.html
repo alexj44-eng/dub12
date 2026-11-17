@@ -78,6 +78,9 @@ button{font-family:inherit;color:inherit}
 .side{position:absolute;left:24px;top:14px;bottom:24px;width:min(560px,46vw);padding:16px;display:flex;flex-direction:column}
 .ttl{font-family:Bungee,Impact,sans-serif;font-size:26px;line-height:1;margin-bottom:12px}
 .ttl small{font:700 11px Inter;letter-spacing:.14em;opacity:.7;margin-left:10px;text-transform:uppercase}
+.swrow{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:7px;padding:2px}
+.swd{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.25);cursor:pointer;box-shadow:inset 0 -4px 8px rgba(0,0,0,.25)}
+.swd.on{border-color:#ffd23f;box-shadow:0 0 0 3px rgba(255,210,63,.35),inset 0 -4px 8px rgba(0,0,0,.25)}
 #ltog{display:flex;gap:8px 14px;flex-wrap:wrap;margin:-2px 0 12px}
 #ltog .tg{display:flex;align-items:center;gap:3px;background:rgba(255,255,255,.05);border-radius:10px;padding:4px}
 #ltog .tg span{font:800 10px Inter;letter-spacing:.14em;text-transform:uppercase;opacity:.7;margin:0 6px 0 4px}
@@ -261,6 +264,15 @@ button{font-family:inherit;color:inherit}
 .modal .box{width:min(420px,92vw);padding:22px}.modal .box.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
 .modal input:not([type=range]){display:block;width:100%;font:700 14px Inter;padding:12px 14px;border-radius:10px;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;margin-bottom:10px;outline:none}
 .modal input:focus{border-color:#ffd23f}
+.acbox{width:min(420px,92vw);padding:24px;text-align:center}
+.acbox input{text-align:left}
+.actabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0 12px}
+.actabs button{font:800 12px Inter;letter-spacing:.12em;background:rgba(255,255,255,.08);border:0;border-radius:9px;padding:10px 0;cursor:pointer}
+.actabs button.on{background:#ffd23f;color:#0b1024}
+#acErr{font-size:12px;min-height:18px;margin:-2px 0 8px;text-align:left}
+.acfoot{display:flex;justify-content:space-between;gap:8px;margin-top:12px;flex-wrap:wrap}
+.lnk{background:none;border:0;color:#cfd6ff;font:700 12px Inter;cursor:pointer;text-decoration:underline;opacity:.8;padding:4px 0}
+.lnk:hover{opacity:1}
 #lErr{color:#ff4d6d;font-size:12px;min-height:18px;margin-bottom:6px}
 .sgrid{display:grid;grid-template-columns:1.3fr 1fr;gap:26px}
 .kr{display:grid;grid-template-columns:1fr 96px 96px;gap:6px;align-items:center;font-size:13px;padding:3px 0}
@@ -438,8 +450,7 @@ button{font-family:inherit;color:inherit}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-<script src="js/color.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script><script src="js/color.js"></script>
 <script src="assets/models.js"></script>
 <script src="assets/env.js"></script>
 <script src="js/data.js"></script>
@@ -451,5 +462,7 @@ button{font-family:inherit;color:inherit}
 <script src="js/game.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/account.js"></script>
 </body>
 </html>

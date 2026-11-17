@@ -46,17 +46,11 @@ const SKI_ART={
 /* ---------- catalog ---------- */
 const ITEMS=[];const IDX={};
 function item(o){o.rarity=o.rarity||'common';o.price=o.price===undefined?RAR[o.rarity].p:o.price;o.src=o.src||'shop';ITEMS.push(o);IDX[o.id]=o;return o;}
-[
- ['j_triple','Triple Black',0x17171b,0x202026,0x2e2e36,null,'common','starter'],['j_ember','Ember',0xff4d3d,0xffd23f,0x1c1f2b,null,'common','starter'],['j_glacier','Glacier',0x2f9bff,0xffffff,0x20242e,null,'common','starter'],
- ['j_moss','Moss',0x5f8a3a,0xe8d9a8,0x3b2f25,null,'common'],['j_sun','Sunflower',0xffc928,0x22306b,0x22306b,null,'common'],
- ['j_orchid','Orchid',0xa55cff,0x39d98a,0x15151c,null,'rare'],['j_bone','Bone',0xeee6d8,0xff7a1a,0x6b4a2e,null,'rare'],
- ['j_bubble','Bubblegum',0xff7ab8,0x58d7ff,0xf2f2f2,null,'rare'],['j_black','Blackout',0x1c1c22,0x3a3a44,0x8a8a96,null,'rare'],
- ['j_camo','Woodland Camo',0x4b5a3a,0x2f3a25,0xd9cfa8,'camo','epic',null,0x7a6a48],['j_plaid','Lumberjack',0xb3261e,0x151515,0x151515,'plaid','epic',null,0x151515],
- ['j_snowcamo','Arctic Camo',0xdfe6ee,0x8b9bb0,0x2c3440,'camo','epic',null,0x9fb0c4],['j_split','Split Decision',0xff4d6d,0x2f9bff,0xffffff,'split','epic',null,0x2f9bff],
- ['j_splat','Paint Bomb',0x15151c,0x39ff9e,0xff3df0,'splat','legendary',null,0x39ff9e],['j_flame','Hot Lap',0x151515,0xff7a1a,0xffd23f,'flames','legendary',null,0xff4d1a],
- ['j_aurora','Aurora Shell',0x0b1a3a,0x39ff9e,0x3df0ff,'aurora','legendary','pass',0x39ff9e],['j_gold','Podium Gold',0xd9a531,0x1a1a1a,0xfff1b8,'gold','legendary','pass',0xfff1b8],
- ['j_check','Checkered Flag',0xf4f4f0,0x151515,0xff4d6d,'check','epic','pass',0x151515],['j_teal','Tidal',0x18a999,0xffd23f,0x0d2b33,null,'rare','pass']
-].forEach(a=>item({id:a[0],cat:'jacket',n:a[1],c:a[2],a:a[3],t:a[4],pat:a[5],rarity:a[6],src:a[7]||'shop',p2:a[8]}));
+/* jackets: two puffer styles, coloured by you (body colour + stripe colour) */
+const JCOL=[['Black',0x141416],['Charcoal',0x3a3d44],['Slate',0x5d6673],['White',0xeceef1],['Signal Red',0xd8343b],['Burnt Orange',0xe0622a],['Mustard',0xd9a526],
+ ['Lime',0x9fd23a],['Forest',0x2f5e3c],['Teal',0x1f9c90],['Sky',0x4aa3e6],['Navy',0x1d2b55],['Purple',0x6d4ab8],['Pink',0xe87aa8],['Sand',0xc9b18a],['Olive',0x5f6640]];
+item({id:'j_puffer',cat:'jacket',n:'Stripe Puffer',c:0x141416,a:0x3a3d44,t:0x141416,rarity:'common',src:'starter',stripe:true});
+item({id:'j_clean',cat:'jacket',n:'Clean Puffer',c:0x141416,a:0x141416,t:0x141416,rarity:'common',src:'starter',stripe:false});
 [
  ['p_triple','Black Baggies',0x18181c,null,'common','starter'],['p_navy','Navy',0x1b2247,null,'common','starter'],['p_black','Charcoal',0x24262e,null,'common','starter'],['p_tan','Desert Tan',0xb59a6e,null,'common'],
  ['p_white','Whiteout',0xe9ecf2,null,'rare'],['p_olive','Olive',0x58613f,null,'common'],['p_red','Fire Red',0xc62f2f,null,'rare'],
@@ -75,7 +69,7 @@ function item(o){o.rarity=o.rarity||'common';o.price=o.price===undefined?RAR[o.r
  ['h_beanie_s','Striped Beanie','beanie',0x2a2a30,0x58d7ff,'epic'],['h_gold','Gold Lid','pro',0xd9a531,0x1a1a20,'legendary','pass',1],['h_teal','Teal Shell','shell',0x2bb3a3,0x1a1a20,'rare','pass']
 ].forEach(a=>item({id:a[0],cat:'helmet',n:a[1],style:a[2],c:a[3],a:a[4],rarity:a[5],src:a[6]||'shop',metal:a[7]}));
 [
- ['o_none','No Goggles','none',0,0,0,'common','starter'],['o_fire','Fire Iridium','frame',0x111111,0xff7a1a,0x111111,'common','starter'],['o_ice','Ice Blue','frame',0xffffff,0x58d7ff,0xffffff,'common','starter'],
+ ['o_none','No Goggles','none',0,0,0,'common','starter'],['o_classic','Classic White','frame',0xf2f2f0,0xc8921f,0xf2f2f0,'common','starter'],['o_fire','Fire Iridium','frame',0x111111,0xff7a1a,0x111111,'common','starter'],['o_ice','Ice Blue','frame',0xffffff,0x58d7ff,0xffffff,'common','starter'],
  ['o_chrome','Chrome','frame',0x222222,0xd8dde6,0x222222,'common'],['o_rose','Rose','frame',0x2b1b3d,0xff5d8f,0x2b1b3d,'rare'],['o_jade','Jade','rimless',0x111111,0x39d98a,0x111111,'rare'],
  ['o_gold','Gold Rush','rimless',0x6b4a2e,0xffd23f,0x6b4a2e,'epic'],['o_violet','Violet Haze','rimless',0xffffff,0x8f5bff,0xffffff,'epic'],['o_void','Void','frame',0x15151a,0x15151a,0x15151a,'rare'],
  ['o_prism','Prism','rimless',0x111111,0xff3df0,0x39ff9e,'legendary'],['o_sunrise','Sunrise','rimless',0xff7a1a,0xffb03f,0xff4d6d,'legendary','pass']
@@ -182,8 +176,8 @@ const ACCOUNTS={"6fa9e9cbd1e501eb9da8f80ca961f5b968eba68cc318ecf2a64fe2006e11f4f
 const today=()=>{const d=new Date();return Math.floor((d.getTime()-d.getTimezoneOffset()*60000)/86400000);};
 let save=null;
 function defaultSave(){return {v:3,coins:500,xp:0,owned:ITEMS.filter(i=>i.src==='starter').map(i=>i.id),
-  load:{jacket:'j_triple',pants:'p_triple',gloves:'g_black',helmet:'h_black',goggles:'o_fire',mask:'m_none',boots:'b_free_blk',skis:'s_topo'},tricks:{g:['t_mute','t_safety','t_japan'],style:'t_cork'},keys:null,set:{vol:.7,shadows:1,res:1,view:'third',zoom:1,fov:62,rot:1,hints:1},acct:null,mig5:true,
-  body:{skin:2,hair:'crop',hairColor:1,eye:0,build:'regular',height:'avg',hood:false},mig4:true,custom:[null,null,null],best:{},map:'park',gm:'battle',q:null,claimed:[],seen:{}};}
+  load:{jacket:'j_puffer',pants:'p_triple',gloves:'g_black',helmet:'h_black',goggles:'o_classic',mask:'m_none',boots:'b_free_blk',skis:'s_chev'},tricks:{g:['t_mute','t_safety','t_japan'],style:'t_cork'},keys:null,set:{vol:.7,shadows:1,res:1,view:'third',zoom:1,fov:62,rot:1,hints:1},acct:null,mig5:true,
+  body:{skin:1,hair:'buzz',hairColor:4,eye:0,build:'regular',height:'avg',hood:false,jc:0,sc:1},mig4:true,custom:[null,null,null],best:{},map:'park',gm:'battle',q:null,claimed:[],seen:{}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem('dub12'));if(s&&s.v===3){save=Object.assign(defaultSave(),s);if(!s.mig5){const d=defaultSave();save.load.mask=save.load.mask||'m_none';d.owned.forEach(i=>{if(!save.owned.includes(i))save.owned.push(i);});save.tricks=d.tricks;save.set=d.set;save.mig5=true;}if(!save.owned.includes('o_none'))save.owned.push('o_none');if(!s.mig4){['j_triple','p_triple'].forEach(i=>{if(!save.owned.includes(i))save.owned.push(i);});save.load.jacket='j_triple';save.load.pants='p_triple';save.body.hood=false;save.mig4=true;persist();}return;}}catch(e){}save=defaultSave();}
 function persist(){try{localStorage.setItem('dub12',JSON.stringify(save));}catch(e){}}
 loadSave();
@@ -195,8 +189,14 @@ const TOD={map:{n:'Map default'},sunrise:{n:'Sunrise',sky:'linear-gradient(#3a4f
  sunset:{n:'Sunset',sky:'linear-gradient(#1b2a6b 0%,#6a55a8 42%,#f08a8f 74%,#ffd9a0 100%)',fog:0xf0a39a,hemi:[0xe6e9ff,0x7d78b8,.62],sun:[0xffd7a8,.52,[-.5,.6,.5]],rng:0xd8b8d8,night:0},
  night:{n:'Night',sky:'linear-gradient(#04061a 0%,#111845 60%,#27306e 100%)',fog:0x18204f,hemi:[0x9db0ff,0x2c3478,.62],sun:[0xc8d6ff,.4,[0,.9,-.3]],rng:0x5060a0,night:1}};
 const VIEWS=[['third','Third person'],['first','First person'],['side','Side cam'],['drone','Drone']];
-function fixSet(){const d={vol:.7,shadows:1,res:1,view:'third',zoom:1,fov:62,rot:1,hints:1,tod:'map',name:'',sideways:1,assist:1,invert:0,respawn:1,bots:1,slowmo:0,popups:1,units:'kmh',poles:1,bighead:0,shake:1,snow:1,fps:0,uiscale:1,speedo:1,fx:1,gog:'face'};for(const k in d)if(save.set[k]===undefined)save.set[k]=d[k];}
+function fixSet(){const d={vol:.7,shadows:1,res:1,view:'third',zoom:1,fov:62,rot:1,hints:1,tod:'map',name:'',sideways:1,assist:1,invert:0,respawn:1,bots:1,slowmo:0,popups:1,units:'kmh',poles:1,bighead:0,shake:1,snow:1,fps:0,uiscale:1,speedo:1,fx:1,gog:'face',ao:0,gogOver:0};for(const k in d)if(save.set[k]===undefined)save.set[k]=d[k];}
 fixSet();
+/* v6 outfit migration: old jacket items were replaced by two puffer styles + colour pickers */
+function migrateOutfit(){const s=save;['j_puffer','j_clean','o_classic'].forEach(i=>{if(!s.owned.includes(i))s.owned.push(i);});
+  if(!IDX[s.load.jacket]||IDX[s.load.jacket].cat!=='jacket')s.load.jacket='j_puffer';
+  if(s.body.jc===undefined)s.body.jc=0;if(s.body.sc===undefined)s.body.sc=1;s.body.build='regular';s.body.height='avg';
+  if(!s.mig6){s.mig6=true;s.load.goggles='o_classic';}}
+migrateOutfit();
 const isStaff=()=>!!(save.acct&&(save.acct.role==='admin'||save.acct.role==='staff'));
 const isAdmin=()=>!!(save.acct&&save.acct.role==='admin');
 const ACTIONS=[['left','Carve left / spin left',['KeyA','ArrowLeft']],['right','Carve right / spin right',['KeyD','ArrowRight']],['fwd','Tuck / frontflip',['KeyW','ArrowUp']],['back','Brake / backflip',['KeyS','ArrowDown']],

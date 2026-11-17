@@ -75,7 +75,7 @@ function snowMaterial(kind,o){o=o||{};const T=snowTextures(kind==='cord'?'cord':
   m.customProgramCacheKey=()=>'snow'+kind;return m;}
 
 /* ---------- post-processing ---------- */
-let comp=null,rPass=null,bloom=null,grade=null,compOK=!!(U.EffectComposer&&U.UnrealBloomPass);
+let comp=null,rPass=null,bloom=null,grade=null,sao=null,compAO=-1,compOK=!!(U.EffectComposer&&U.UnrealBloomPass);
 const GradeShader={uniforms:{tDiffuse:{value:null},uTime:{value:0},uVig:{value:.55},uGrain:{value:.018},uSat:{value:1.08},uWarm:{value:new U.Vector3(1.0,1.0,1.0)}},
   vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
   fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uVig,uGrain,uSat;uniform vec3 uWarm;varying vec2 vUv;
@@ -87,14 +87,13 @@ function buildComposer(){if(!compOK)return;
   const pr=renderer.getPixelRatio(),w=Math.max(1,W*pr|0),h=Math.max(1,H*pr|0),gl2=renderer.capabilities.isWebGL2;
   const opt={type:U.HalfFloatType,format:U.RGBAFormat,encoding:U.LinearEncoding};
   const rt=gl2&&U.WebGLMultisampleRenderTarget?new U.WebGLMultisampleRenderTarget(w,h,opt):new U.WebGLRenderTarget(w,h,opt);
-  comp=new U.EffectComposer(renderer,rt);rPass=new U.RenderPass(scene,cam);comp.addPass(rPass);
-  bloom=new U.UnrealBloomPass(new U.Vector2(w,h),.32,.55,.86);comp.addPass(bloom);
+  comp=new U.EffectComposer(renderer,rt);rPass=new U.RenderPass(scene,cam);comp.addPass(rPass);  bloom=new U.UnrealBloomPass(new U.Vector2(w,h),.32,.55,.86);comp.addPass(bloom);
   grade=new U.ShaderPass(GradeShader);grade.renderToScreen=true;comp.addPass(grade);comp.setPixelRatio(1);comp.setSize(w,h);}
 let compW=0,compH=0,compPR=0;
 function present(sc,camera,dt){
   if(!fxOn()){renderer.render(sc,camera);return;}
-  const pr=renderer.getPixelRatio();if(!comp||compW!==W||compH!==H||compPR!==pr){compW=W;compH=H;compPR=pr;if(comp){comp.renderTarget1.dispose();comp.renderTarget2.dispose();}buildComposer();}
-  rPass.scene=sc;rPass.camera=camera;grade.uniforms.uTime.value+=dt||.016;
+  const pr=renderer.getPixelRatio();if(!comp||compW!==W||compH!==H||compPR!==pr||compAO!==save.set.ao){compW=W;compH=H;compPR=pr;compAO=save.set.ao;if(comp){comp.renderTarget1.dispose();comp.renderTarget2.dispose();}buildComposer();}
+  rPass.scene=sc;rPass.camera=camera;if(sao){sao.scene=sc;sao.camera=camera;}grade.uniforms.uTime.value+=dt||.016;
   const night=sc===scene&&map&&MAPS[map.id]&&(MAPS[map.id].night||(save.set.tod==='night'));
   bloom.strength=night?.5:.16;bloom.threshold=night?.72:.94;
   comp.render(dt);}

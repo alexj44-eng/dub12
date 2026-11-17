@@ -18,9 +18,9 @@ let sk=null,p=null,BOTS=[];
 const BOT_DEF=[['Juno',-115,.75,7],['Pow_Hound',115,.55,19],['Wax_Wizard',55,.9,33]];
 function botLoad(seed){const r=rng(seed),pick=c=>{const L=ITEMS.filter(i=>i.cat===c);return L[(r()*L.length)|0].id;};
   return {load:{jacket:pick('jacket'),pants:pick('pants'),gloves:pick('gloves'),helmet:pick('helmet'),goggles:pick('goggles'),boots:pick('boots'),skis:pick('skis')},
-    body:{hood:r()<.4,skin:(r()*8)|0,hair:BODY.hair[1+((r()*5)|0)][0],hairColor:(r()*12)|0,eye:(r()*8)|0,build:BODY.build[(r()*4)|0][0],height:BODY.height[(r()*3)|0][0]}};}
+    body:{hood:r()<.4,jc:(r()*JCOL.length)|0,sc:(r()*JCOL.length)|0,skin:(r()*8)|0,hair:BODY.hair[1+((r()*5)|0)][0],hairColor:(r()*12)|0,eye:(r()*8)|0,build:BODY.build[(r()*4)|0][0],height:BODY.height[(r()*3)|0][0]}};}
 function initRiders(){
-  sk=makeRider();sk.gogMode=save.set.gog;sk.apply(save.load,save.body);
+  sk=makeRider();sk.gogMode=save.set.gog;sk.gogOver=!!save.set.gogOver;sk.apply(save.load,save.body);
   p={sk,name:'You',inp:keys,bot:null,stat:statOf(save.load.skis)};
   BOTS=BOT_DEF.map(b=>{const s=makeRider(),L=botLoad(b[3]);s.apply(L.load,L.body);s.root.visible=false;scene.add(s.root);return {sk:s,name:b[0],inp:mkInp(),stat:statOf(L.load.skis),bot:{lane:b[1],skill:b[2],plan:null,dir:b[3]%2?1:-1}};});
 }
@@ -231,7 +231,7 @@ const snow=new U.Points(snG,new U.PointsMaterial({color:0xffffff,size:2.6,transp
 function snowUpdate(dt){const lv=save.set.snow;snow.visible=lv>0;if(!lv)return;snG.setDrawRange(0,lv===2?SNN:550);snow.position.copy(cam.position);
   for(let i=0;i<SNN;i++){let y=snP[i*3+1]-dt*(60+(i%7)*8),x=snP[i*3]+Math.sin(i+CLOTH.t.value)*dt*12;if(y<-250)y+=600;snP[i*3+1]=y;snP[i*3]=x;}snG.attributes.position.needsUpdate=true;}
 /* ---------- view ---------- */
-function place(r,dt){const R=r.sk.root;r.sk.head.scale.setScalar(save.set.bighead?1.55:1);R.scale.setScalar(r.sk.hs);R.position.set(r.x,r.y+.2,r.z);R.rotation.set(0,bodyYaw(r),0);
+function place(r,dt){const R=r.sk.root;r.sk.head.scale.setScalar((save.set.bighead?1.55:1)*(r.sk.headS||1));R.scale.setScalar(r.sk.hs);R.position.set(r.x,r.y+.2,r.z);R.rotation.set(0,bodyYaw(r),0);
   r.sk.flipG.rotation.set(r.pitch+r.bp,0,-r.roll*(r.sw?-1:1)+r.tilt*Math.sin(r.pitch));
   const g=r.mode==='ground',tuck=g&&r.inp.w&&!r.charge&&!r.fin&&r.crashT<=0;
   if(r.mode==='lift'){r.sk.flipG.rotation.set(0,0,0);r.sk.pose({crouch:1,idle:true},dt);return;}

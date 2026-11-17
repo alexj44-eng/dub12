@@ -1,13 +1,13 @@
 /* DUB12 — lobby UI: play, locker, shop, pass, quests, leaderboard, map, ski designer */
 'use strict';
-let view='play',lobbyYaw=.45,dragX=null,dragMoved=0,qT=0,lockCat='jacket',tryLoad=null;
+let view='play',lobbyYaw=.45,lobbyTilt=0,lobbyZoom=1,dragY=0,dragX=null,dragMoved=0,qT=0,lockCat='jacket',tryLoad=null;
 const mouse=new U.Vector2(),rayL=new U.Raycaster();
 const owned=id=>isStaff()||save.owned.includes(id);
 const lvlOk=l=>isStaff()||level()>=l;
 const coinHTML=n=>'<i class="coin"></i>'+n.toLocaleString();
 function toast(msg){const t=$('toast');t.innerHTML=msg;t.classList.remove('go');void t.offsetWidth;t.classList.add('go');}
 function statBars(id){const st=statOf(id);return '<div class="stats">'+['Speed','Pop','Spin'].map((n,i)=>'<div><span>'+n+'</span><i>'+'<b></b>'.repeat(st[i])+'<u></u>'.repeat(5-st[i])+'</i></div>').join('')+'</div>';}
-function refreshWallet(){const lv=level(),x=save.xp%XP_PER_LVL;$('lvl').textContent=lv;$('xpbar').style.width=(x/XP_PER_LVL*100)+'%';$('xptxt').textContent=x+' / '+XP_PER_LVL+' XP';$('coins').innerHTML=coinHTML(save.coins);$('acctBtn').textContent=save.acct?save.acct.u:'LOG IN';$('acctBtn').classList.toggle('in',!!save.acct);document.querySelector('#nav [data-v=admin]').classList.toggle('hide',!isAdmin());
+function refreshWallet(){const lv=level(),x=save.xp%XP_PER_LVL;$('lvl').textContent=lv;$('xpbar').style.width=(x/XP_PER_LVL*100)+'%';$('xptxt').textContent=x+' / '+XP_PER_LVL+' XP';$('coins').innerHTML=coinHTML(save.coins);if(typeof refreshAcctChip==='function')refreshAcctChip();else{$('acctBtn').textContent=save.acct?save.acct.u:'LOG IN';$('acctBtn').classList.toggle('in',!!save.acct);}document.querySelector('#nav [data-v=admin]').classList.toggle('hide',!isAdmin());
   const bp=PASS.filter(t=>t.t<=lv&&!save.claimed.includes(t.t)).length,bq=save.q.list.filter(q=>q.prog>=q.goal&&!q.claimed).length;
   $('badgeP').textContent=bp;$('badgeP').classList.toggle('hide',!bp);$('badgeQ').textContent=bq;$('badgeQ').classList.toggle('hide',!bq);}
 function questProgress(v){ensureQuests();const done=[];save.q.list.forEach(q=>{if(q.prog>=q.goal)return;const a=v[q.k]||0;q.prog=q.max?Math.max(q.prog,a):q.prog+a;if(q.prog>=q.goal){q.prog=q.goal;done.push(q);}});return done;}
@@ -51,12 +51,15 @@ function drawLobby(dt){lt+=dt;CLOTH.t.value+=dt*.4;CLOTH.w.value=.12;const R=sk.
   const yaw=view==='design'?1.25:lobbyYaw+(dragX===null?Math.sin(lt*.5)*.06:0);R.rotation.y+=(yaw-R.rotation.y)*Math.min(1,dt*6);sk.flipG.rotation.set(0,0,0);
   const gd=view==='locker'&&(lockCat==='goggles'||lockCat==='helmet')||view==='shop'&&tryLoad;
   sk.pose({crouch:.05+Math.sin(lt*1.6)*.025,idle:true,gogUp:!gd,peek:view==='locker'&&lockCat==='eye'},dt);
-  const V=LV[view]||LV.play,k=1-Math.exp(-dt*4.5);lcp.lerp(_v.fromArray(V.p),k);lct.lerp(_v.fromArray(V.t),k);lcam.position.copy(lcp);lcam.lookAt(lct);
+  const V=LV[view]||LV.play,k=1-Math.exp(-dt*4.5);lcp.lerp(_v.fromArray(V.p),k);lct.lerp(_v.fromArray(V.t),k);
+  // player zoom/tilt around the preview target (map and designer keep their fixed shots)
+  const free=view!=='map'&&view!=='design',zm=free?lobbyZoom:1,tl=free?lobbyTilt:0;
+  lcam.position.copy(lct).addScaledVector(_v.subVectors(lcp,lct),zm);lcam.position.y+=tl*zm;lcam.lookAt(lct.x,lct.y+(free?(1-zm)*-14:0),lct.z);
   if(Math.abs(lcam.fov-V.f)>.05){lcam.fov+=(V.f-lcam.fov)*k;lcam.updateProjectionMatrix();}
   placePins();if(lobbySky)lobbySky.material.uniforms.uTime.value+=dt;present(lobby,lcam,dt);}
 
 /* ---------- locker ---------- */
-const BODYTABS=[['skin','Skin'],['hair','Hair'],['hairColor','Hair color'],['eye','Eyes'],['build','Build'],['height','Height']];
+const BODYTABS=[['skin','Skin'],['hair','Hair'],['hairColor','Hair color'],['eye','Eyes']];
 let trickSlot=0;
 function renderTricks(el,nm){el.className='grid';
   const slots=document.createElement('div');slots.className='slots';
@@ -75,11 +78,12 @@ function renderTricks(el,nm){el.className='grid';
 /* quick gear toggles, always visible at the top of the locker */
 const GEAR_TOG=[['Hood',[['Down',false],['Up',true]],()=>!!save.body.hood,v=>{save.body.hood=v;}],
   ['Goggles',[['On face','face'],['On helmet','helmet'],['Off','off']],()=>save.set.gog,v=>{save.set.gog=v;}],
+  ['Goggles + hood',[['Under hood',0],['Over hood',1]],()=>save.set.gogOver,v=>{save.set.gogOver=v;}],
   ['Poles',[['On',1],['Off',0]],()=>save.set.poles,v=>{save.set.poles=v;}]];
 function renderToggles(){const tg=$('ltog');
   tg.innerHTML=GEAR_TOG.map((t,i)=>'<div class="tg"><span>'+t[0]+'</span>'+t[1].map((o,j)=>'<button data-i="'+i+'" data-j="'+j+'" class="'+(t[2]()===o[1]?'on':'')+'">'+o[0]+'</button>').join('')+'</div>').join('');
   tg.querySelectorAll('button').forEach(b=>b.onclick=()=>{const t=GEAR_TOG[+b.dataset.i];t[3](t[1][+b.dataset.j][1]);persist();
-    sk.gogMode=save.set.gog;sk.apply(save.load,save.body);sk.setPoles(save.set.poles);for(const k in THUMB)delete THUMB[k];sfx('ui');renderLocker();});}
+    sk.gogMode=save.set.gog;sk.gogOver=!!save.set.gogOver;sk.apply(save.load,save.body);sk.setPoles(save.set.poles);for(const k in THUMB)delete THUMB[k];sfx('ui');renderLocker();});}
 function renderLocker(){
   renderToggles();
   const cats=$('lcats');cats.innerHTML='<div class="lbl">Character</div>'+BODYTABS.map(b=>'<button data-c="'+b[0]+'">'+b[1]+'</button>').join('')+'<div class="lbl">Gear</div>'+CATS.map(c=>'<button data-c="'+c[0]+'">'+c[1]+'</button>').join('');
@@ -103,6 +107,10 @@ function renderLocker(){
     list.forEach(it=>{const own=owned(it.id),d=document.createElement('div');d.className='card'+(it.cat==='skis'?' ski':'')+(save.load[lockCat]===it.id?' on':'')+(own?'':' locked');d.style.setProperty('--r',RAR[it.rarity].c);
       d.innerHTML=(it.cat==='skis'?'<div class="skiimg" style="background-image:url('+skiCanvas(it.id).toDataURL()+')"></div>':'<img src="'+itemThumb(it)+'">')+'<span>'+(own?it.n.replace(/^[A-Z0-9. ]+ (?=[A-Z][a-z])/,''):(it.src==='pass'?'Pass tier '+PASS.find(t=>t.item===it.id).t:coinHTML(it.price)))+'</span>'+(own?'':'<em>🔒</em>');
       d.onclick=()=>{if(!own){if(it.src==='pass')setView('pass');else{setView('shop');openDetail(it);}return;}save.load[lockCat]=it.id;persist();sk.apply(save.load,save.body);renderLocker();};el.appendChild(d);});
+    if(lockCat==='jacket'){const row=(label,key,skip)=>{const l=document.createElement('div');l.className='lbl';l.style.gridColumn='1/-1';l.style.marginTop='8px';l.textContent=label;el.appendChild(l);
+        const box=document.createElement('div');box.className='swrow';el.appendChild(box);
+        JCOL.forEach((c,i)=>{const d=document.createElement('button');d.className='swd'+(save.body[key]===i?' on':'');d.title=c[0];d.style.background=hex(c[1]);d.onclick=()=>setB(key,i);box.appendChild(d);});};
+      row('Jacket colour','jc');if(IDX[save.load.jacket].stripe!==false)row('Stripe colour','sc');}
     const cur=IDX[save.load[lockCat]];nm.innerHTML=lockCat==='skis'?'<b>'+(cur?cur.n:'Custom skis')+'</b>'+statBars(save.load.skis):cur?'<b style="color:'+RAR[cur.rarity].c+'">'+cur.n+'</b>'+RAR[cur.rarity].n+' '+CATS.find(c=>c[0]===lockCat)[1].toLowerCase():'<b>Custom skis</b>Your own design';}
 }
 
@@ -245,8 +253,11 @@ function wire(){
   $('dzSwap').onclick=()=>{[DZ.col,DZ.col2]=[DZ.col2,DZ.col];dzUI();};
   $('dzSave').onclick=()=>commitDesign(true);$('dzCancel').onclick=()=>{drawSki('custom'+DZ.slot);lockCat='skis';setView('locker');};
   // lobby rider drag / click
-  cv.addEventListener('pointerdown',e=>{if(mode!=='run'&&view!=='map'){dragX=e.clientX;dragMoved=0;}});
-  window.addEventListener('pointermove',e=>{if(dragX!==null){lobbyYaw+=(e.clientX-dragX)*.012;dragMoved+=Math.abs(e.clientX-dragX);dragX=e.clientX;}});
+  cv.addEventListener('pointerdown',e=>{if(mode!=='run'&&view!=='map'){dragX=e.clientX;dragY=e.clientY;dragMoved=0;}});
+  window.addEventListener('pointermove',e=>{if(dragX!==null){lobbyYaw+=(e.clientX-dragX)*.012;lobbyTilt=Math.max(-45,Math.min(70,lobbyTilt+(e.clientY-dragY)*.35));
+    dragMoved+=Math.abs(e.clientX-dragX)+Math.abs(e.clientY-dragY);dragX=e.clientX;dragY=e.clientY;}});
+  // scroll / pinch to zoom on your rider in the lobby
+  cv.addEventListener('wheel',e=>{if(mode==='run'||view==='map')return;e.preventDefault();lobbyZoom=Math.max(.4,Math.min(1.6,lobbyZoom*Math.exp(e.deltaY*.0012)));},{passive:false});
   window.addEventListener('pointerup',e=>{if(dragX!==null&&dragMoved<6&&mode==='lobby'&&view==='play'){
       {mouse.set(e.clientX/W*2-1,-(e.clientY/H)*2+1);rayL.setFromCamera(mouse,lcam);if(rayL.intersectObject(sk.root,true).length)setView('locker');}}
     dragX=null;});
@@ -341,6 +352,7 @@ function renderAdmin(){$('adminInfo').innerHTML='Signed in as <b>'+(save.acct?sa
 function boot(){resize();
   loadAssets('assets/dub12.glb',()=>{
     buildLobby();initRiders();hydrateCustom();wire();applySettings();setMode('lobby');$('loading').classList.add('hide');
+    if(typeof initAccounts==='function')initAccounts();
     if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{redrawAllSkis();});
     requestAnimationFrame(frame);
   },e=>{$('loading').querySelector('p').textContent='Could not load the 3D models.';console.error(e);});}
