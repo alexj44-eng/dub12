@@ -171,7 +171,7 @@ const PASS=(()=>{const ex=ITEMS.filter(i=>i.src==='pass').map(i=>i.id);const r=[
   return r;})();
 
 /* staff & admin accounts: sha-256 of 'dub12:'+username+':'+password (passwords are not stored here) */
-const ACCOUNTS={"6fa9e9cbd1e501eb9da8f80ca961f5b968eba68cc318ecf2a64fe2006e11f4fb":{"u":"Admin_Alpine","role":"admin"},"f23130cd5f272ed7f4726aab3e0ff47b671d1462244472141a9bcfddba43701e":{"u":"Admin_Summit","role":"admin"},"dcfdae50848387fc744137c39466e4e31155b6109c268841b1854f84c6a659d2":{"u":"Admin_Glacier","role":"admin"},"5120501ab4f4801e570d2db44da67495b0a34d9b150244f88e8f70a923384447":{"u":"Admin_Powder","role":"admin"},"0fdc3745f19b666432c840ed3ef3f07f8412a4de09767bffc028437d1d28f54d":{"u":"Admin_Couloir","role":"admin"}};
+const ACCOUNTS={"6fa9e9cbd1e501eb9da8f80ca961f5b968eba68cc318ecf2a64fe2006e11f4fb":{"u":"Admin_Alpine","role":"admin"},"f23130cd5f272ed7f4726aab3e0ff47b671d1462244472141a9bcfddba43701e":{"u":"Admin_Summit","role":"admin"},"dcfdae50848387fc744137c39466e4e31155b6109c268841b1854f84c6a659d2":{"u":"Admin_Glacier","role":"admin"},"5120501ab4f4801e570d2db44da67495b0a34d9b150244f88e8f70a923384447":{"u":"Admin_Powder","role":"admin"},"0fdc3745f19b666432c840ed3ef3f07f8412a4de09767bffc028437d1d28f54d":{"u":"Admin_Couloir","role":"admin"},"9e6be69f919bad05f4552f2b340fe95c9b921877bdd1f4fc22c9ec2a2fd73b34":{"u":"AlexJ","role":"admin"}};
 /* ---------- save ---------- */
 const today=()=>{const d=new Date();return Math.floor((d.getTime()-d.getTimezoneOffset()*60000)/86400000);};
 let save=null;
