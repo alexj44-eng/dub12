@@ -126,7 +126,7 @@ const gPitch=(x,z,dx,dz)=>-Math.atan((hAt(x+dx*6,z+dz*6)-hAt(x-dx*6,z-dz*6))/12)
 /* ---------- run scene ---------- */
 const scene=new U.Scene();
 const hemi=new U.HemisphereLight(0xffffff,0x8899bb,.9),sun=new U.DirectionalLight(0xffffff,.7);
-sun.castShadow=true;sun.shadow.mapSize.set(4096,4096);sun.shadow.bias=-.0008;sun.shadow.normalBias=2;
+sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);   /* 2048 is plenty at this shadow frustum; a quarter of the GPU memory/fill of 4096 */sun.shadow.bias=-.0008;sun.shadow.normalBias=2;
 {const c=sun.shadow.camera;c.left=-560;c.right=560;c.top=560;c.bottom=-560;c.near=100;c.far=4200;}
 scene.add(hemi,sun,sun.target);
 let runG=null;const sunDir=new U.Vector3(0,1,0);
@@ -156,7 +156,11 @@ function updateLift(dt){const Lf=runG&&runG.userData.lift;if(!Lf)return;Lf.t+=dt
     Lf.chairs.forEach(m=>m.setMatrixAt(k,_lo.matrix));});
   Lf.chairs.forEach(m=>m.instanceMatrix.needsUpdate=true);}
 function buildGfx(){
-  if(runG){scene.remove(runG);runG.traverse(o=>{if(o.geometry&&!o.userData.shared&&!o.isInstancedMesh)o.geometry.dispose();});}
+  // free the previous map's GPU memory: geometries, materials and every texture they use (signs, labels, facades, map boards…).
+  // Shared/cached resources are safe to dispose too: three.js re-uploads them automatically if a later map uses them again.
+  if(runG){scene.remove(runG);const seen=new Set(),drop=x=>{if(x&&!seen.has(x)){seen.add(x);x.dispose();}};
+    runG.traverse(o=>{if(o.geometry)drop(o.geometry);if(o.isInstancedMesh&&o.dispose)o.dispose();const ms=o.material?(Array.isArray(o.material)?o.material:[o.material]):[];
+      for(const m of ms){if(!m)continue;for(const k of ['map','emissiveMap','bumpMap','normalMap','roughnessMap','alphaMap'])if(m[k]&&m[k].isTexture&&!(m[k].userData&&m[k].userData.keep))drop(m[k]);drop(m);}});}
   runG=new U.Group();scene.add(runG);
   const M=map,C=Object.assign({},MAPS[M.id],save.set.tod&&save.set.tod!=='map'?TOD[save.set.tod]:{}),skyc=C.sky.match(/#[0-9a-f]{6}/gi);
   cv.style.background=C.sky;scene.fog=new U.Fog(C.fog,2200,14000);
@@ -261,5 +265,7 @@ function buildGfx(){
   rgm.onBeforeCompile=sh=>{sh.uniforms.uFog={value:rfog};sh.vertexShader='varying float vH;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvH=position.y/1184.;');
     sh.fragmentShader='varying float vH;uniform vec3 uFog;\n'+sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n diffuseColor.rgb=mix(uFog,diffuseColor.rgb*vec3(.92,.96,1.04),.22+.5*smoothstep(.05,.85,vH));');};
   const rg=part('range');rg.traverse(o=>{if(o.isMesh){o.material=rgm;o.castShadow=false;}});
-  rg.scale.set(10,6.5,8);rg.rotation.y=Math.PI;runG.add(rg);runG.userData.mtn=rg;
+  rg.scale.set(10,7.5,8);rg.rotation.y=Math.PI;runG.add(rg);runG.userData.mtn=rg;
+  // haze skirt under the range: fills the gap between the range's base and the horizon so it no longer floats on bare sky
+  const sk_=new U.Mesh(new U.PlaneGeometry(9000,4000),new U.MeshBasicMaterial({color:rfog,fog:false,side:U.DoubleSide}));sk_.position.set(0,-1990,0);rg.add(sk_);
 }

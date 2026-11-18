@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DUB12</title>
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
@@ -12,7 +12,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
 .hide{display:none!important}
 button{font-family:inherit;color:inherit}
 .coin{display:inline-block;width:.95em;height:.95em;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6c4,#ffd23f 45%,#c99a06);box-shadow:inset 0 0 0 1.5px #a87d02;vertical-align:-.12em;margin-right:.3em}
-.lbl{font-size:10px;letter-spacing:.22em;text-transform:uppercase;opacity:.7;margin:2px 0 8px}
+.lbl{font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:#b8c0dc;margin:2px 0 8px}
 .glass{background:rgba(10,14,34,.78);border:1px solid rgba(255,255,255,.12);border-radius:16px;backdrop-filter:blur(10px)}
 #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0b1024;z-index:50}
 #loading h1{font-family:Bungee,Impact,sans-serif;font-size:72px;transform:rotate(-3deg);text-shadow:0 6px 0 #ff4d6d}
@@ -172,7 +172,7 @@ button{font-family:inherit;color:inherit}
 .lrow:nth-child(odd){background:rgba(255,255,255,.04)}
 .lrow span{opacity:.7;font-weight:800}.lrow em{font-style:normal;font-weight:800}
 .lrow.me{background:rgba(255,210,63,.18)!important;color:#ffd23f}
-.note{font-size:11px;opacity:.6;margin-top:8px}
+.note{font-size:12px;color:#b8c0dc;margin-top:8px}
 /* map */
 #pins{position:fixed;inset:0;pointer-events:none}
 .pin{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;display:flex;flex-direction:column;align-items:center;margin:-46px 0 0 -60px;width:120px}
@@ -221,7 +221,7 @@ button{font-family:inherit;color:inherit}
 #bal{position:absolute;left:50%;bottom:76px;transform:translateX(-50%);width:280px;height:14px;border-radius:8px;background:linear-gradient(90deg,rgba(255,77,109,.55),rgba(255,176,63,.35) 22%,rgba(57,217,138,.35) 40%,rgba(57,217,138,.35) 60%,rgba(255,176,63,.35) 78%,rgba(255,77,109,.55));border:1px solid rgba(255,255,255,.35)}
 #bal span{position:absolute;left:0;right:0;top:-18px;text-align:center;font:800 10px Inter;letter-spacing:.3em;text-shadow:0 1px 0 rgba(11,16,36,.7)}
 #bal b{position:absolute;top:-4px;width:6px;height:22px;margin-left:-3px;border-radius:3px;background:#39d98a;box-shadow:0 0 0 2px #0b1024}
-#prompt{position:absolute;left:50%;top:58px;transform:translateX(-50%);font-size:12px;letter-spacing:.04em;background:rgba(11,16,36,.6);padding:7px 14px;border-radius:20px;white-space:nowrap}
+#prompt{position:absolute;left:50%;top:58px;transform:translateX(-50%);font-size:12.5px;letter-spacing:.04em;background:rgba(11,16,36,.7);padding:7px 14px;border-radius:20px;max-width:min(92vw,760px);text-align:center}
 #prompt b{color:#ffd23f}
 .tmbox{width:min(900px,95vw);max-height:92vh;padding:18px;text-align:left;display:flex;flex-direction:column}
 .tmgrid{display:flex;flex-direction:column;gap:12px;min-height:0;flex:1}
@@ -233,7 +233,11 @@ button{font-family:inherit;color:inherit}
 #tmList .lbl{grid-column:1/-1;margin:8px 0 2px;opacity:1;font-weight:800}
 #tmList button{text-align:left;background:rgba(255,255,255,.07);border:2px solid transparent;border-radius:9px;padding:8px 10px;cursor:pointer}
 #tmList button:hover{border-color:#ffd23f}#tmList button b{display:block;font:800 13px Inter}#tmList button span{font-size:11px;opacity:.7}
-#hint{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);font-size:11px;letter-spacing:.04em;white-space:nowrap;background:rgba(11,16,36,.5);padding:6px 12px;border-radius:20px}
+#hint{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);font-size:12px;letter-spacing:.03em;max-width:min(94vw,980px);text-align:center;line-height:1.5;background:rgba(11,16,36,.6);padding:6px 14px;border-radius:16px}
+/* accessibility + small screens */
+:focus-visible{outline:2px solid #ffd23f;outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@media (max-width:900px){#top{gap:8px;padding:0 10px;overflow-x:auto}#top button{font-size:11px;padding:6px 8px}#qmini{display:none}#hint{font-size:11px;bottom:8px}}
 #hint b{color:#ffd23f}
 #exit{position:absolute;top:14px;left:50%;transform:translateX(-50%);pointer-events:auto;font:700 11px Inter;letter-spacing:.12em;text-transform:uppercase;background:rgba(11,16,36,.5);border:0;border-radius:20px;padding:7px 14px;cursor:pointer}
 #pop{position:absolute;left:0;right:0;top:20%;text-align:center;font-family:Bungee,Impact,sans-serif;opacity:0}
@@ -304,6 +308,7 @@ button{font-family:inherit;color:inherit}
 #spane input[type=text]{font:700 13px Inter;padding:7px 10px;border-radius:8px;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;width:150px;margin:0}
 #fps{position:absolute;left:18px;bottom:18px;font:800 11px Inter;background:rgba(11,16,36,.5);padding:4px 8px;border-radius:6px}
 </style>
+<link rel="preload" href="assets/models.glb" as="fetch" crossorigin><link rel="preload" href="assets/env.glb" as="fetch" crossorigin><link rel="preload" href="assets/gear.glb" as="fetch" crossorigin>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -437,7 +442,7 @@ button{font-family:inherit;color:inherit}
   <div id="hint"><b>A/D</b> carve · <b>W</b> tuck · <b>S</b> brake · <b>F</b> switch 180 · hold <b>Space</b> jump · air: <b>A/D</b> spin, <b>W/S</b> flip, <b>Shift/R/Q</b> grabs · snow: <b>Q/R</b> butter</div>
 </div>
 <div id="tmap" class="ov hide"><div class="glass tmbox">
-  <div class="shd" style="margin-bottom:10px"><div class="ttl" style="margin:0">Trail Map · Blue Mountain</div><input id="tmSearch" type="search" placeholder="Search runs, parks, lifts…" autocomplete="off"><button class="btn ghost" id="tmClose" style="margin-left:auto">CLOSE (M)</button></div>
+  <div class="shd" style="margin-bottom:10px"><div class="ttl" style="margin:0" id="tmTitle">Trail Map</div><input id="tmSearch" type="search" placeholder="Search runs, parks, lifts…" autocomplete="off"><button class="btn ghost" id="tmClose" style="margin-left:auto">CLOSE (M)</button></div>
   <div class="tmgrid"><canvas id="tmCv" width="300" height="720"></canvas><div id="tmList"></div></div>
   <div class="note">Click anywhere on the map to spawn there, or pick a run below. Red dashed lines are lifts (numbered like the real map). Yellow dot is you.</div>
 </div></div>
@@ -448,14 +453,14 @@ button{font-family:inherit;color:inherit}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script><script src="js/color.js"></script>
-<script src="assets/models.js"></script>
-<script src="assets/env.js"></script>
+<script src="js/resorts_data.js"></script>
 <script src="js/data.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/rider.js"></script>

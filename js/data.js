@@ -154,6 +154,13 @@ MAPS.resort={n:'Blue Mountain',zone:'Free Roam',d:'Blue Mountain, Ontario: all 4
   sky:'linear-gradient(#2a64c8 0%,#86b8f0 55%,#e9f3ff 100%)',fog:0xd8e8fa,hemi:[0xffffff,0x7f9fd8,.64],sun:[0xfff2dc,.52,[.45,.62,.45]],tex:'pow',tree:[0x1d4a35,0x2a6a4a],rng:0xffffff};
 MAPS.skicross={n:'Ski Cross',zone:'Blue Mountain · L-Hill',d:'Four riders, one start gate. Race the full-length L-Hill ski-cross course: banked berms, rollers, whoops, step-downs and jumps, top to bottom. First across the line wins.',diff:'Race',lvl:1,pin:[-.3,.25],fr:1,sx:1,
   sky:MAPS.resort.sky,fog:MAPS.resort.fog,hemi:MAPS.resort.hemi,sun:MAPS.resort.sun,tex:'pow',tree:MAPS.resort.tree,rng:0xffffff};
+MAPS.skicross.n='Ski Cross · Blue Mountain';MAPS.skicross.d=MAPS.skicross.d.replace('whoops, ','');
+// more resorts (real runs from OpenStreetMap): a free-roam map and a ski-cross race for each
+{const SKY={q:['linear-gradient(#2d5fb8 0%,#8fb8ea 55%,#eef4fb 100%)',0xdce8f6],r:['linear-gradient(#1f5fc8 0%,#7fb4f2 50%,#e4f1ff 100%)',0xd4e6fb],o:[MAPS.resort.sky,MAPS.resort.fog]};
+  Object.values(window.RESORT_DATA||{}).forEach((R,i)=>{const s=SKY[R.sky]||SKY.o,base={sky:s[0],fog:s[1],hemi:MAPS.resort.hemi,sun:MAPS.resort.sun,tex:'pow',tree:MAPS.resort.tree,rng:0xffffff,lvl:1,fr:1,rid:R.id};
+    const sx=R.trails.find(t=>t[3]&&t[3].skix);
+    MAPS['r_'+R.id]=Object.assign({n:R.n,zone:R.zone,d:R.n+': '+R.trails.length+' real runs and '+R.lifts.length+' lifts laid out from the mountain map, terrain parks and a ski-cross course on '+(sx?sx[0]:'a blue run')+'. Ride the lifts or click the map to spawn anywhere.',diff:'Open world',pin:[-.6+i*.24,.5]},base);
+    if(sx)MAPS['x_'+R.id]=Object.assign({n:'Ski Cross · '+R.n,zone:R.n+' · '+sx[0],d:'Four riders out of the start gate on '+sx[0]+' at '+R.n+': banked berms, rollers, step-downs and jumps. First across the line wins.',diff:'Race',pin:[-.6+i*.24,.62],sx:1},base);});}
 const MODES={battle:{n:'Trick Battle',i:'⚔️',d:'You vs 3 riders. Top score wins.'},free:{n:'Freeride',i:'🎿',d:'Solo run for a high score.'},time:{n:'Time Trial',i:'⏱️',d:'Fastest to the finish line.'},
   skix:{n:'Ski Cross',i:'🏁',d:'4-rider race through berms and rollers.',hidden:1}};
 
@@ -195,7 +202,7 @@ const TOD={map:{n:'Map default'},sunrise:{n:'Sunrise',sky:'linear-gradient(#3a4f
  sunset:{n:'Sunset',sky:'linear-gradient(#1b2a6b 0%,#6a55a8 42%,#f08a8f 74%,#ffd9a0 100%)',fog:0xf0a39a,hemi:[0xe6e9ff,0x7d78b8,.62],sun:[0xffd7a8,.52,[-.5,.6,.5]],rng:0xd8b8d8,night:0},
  night:{n:'Night',sky:'linear-gradient(#04061a 0%,#111845 60%,#27306e 100%)',fog:0x18204f,hemi:[0x9db0ff,0x2c3478,.62],sun:[0xc8d6ff,.4,[0,.9,-.3]],rng:0x5060a0,night:1}};
 const VIEWS=[['third','Third person'],['first','First person'],['side','Side cam'],['drone','Drone']];
-function fixSet(){const d={vol:.7,shadows:1,res:1,view:'third',zoom:1,fov:62,rot:1,hints:1,tod:'map',name:'',sideways:1,assist:1,invert:0,respawn:1,bots:1,slowmo:0,popups:1,units:'kmh',poles:1,bighead:0,shake:1,snow:1,fps:0,uiscale:1,speedo:1,fx:1,gog:'face',ao:0,gogOver:0,ride:'ski'};for(const k in d)if(save.set[k]===undefined)save.set[k]=d[k];}
+function fixSet(){const d={vol:.7,shadows:1,res:1,view:'third',zoom:1,fov:62,rot:1,hints:1,tod:'map',name:'',sideways:1,assist:1,invert:0,respawn:1,bots:1,slowmo:0,popups:1,units:'kmh',poles:1,bighead:0,shake:1,snow:1,fps:0,uiscale:1,speedo:1,fx:1,gog:'face',ao:0,gogOver:0,ride:'ski',autoq:1};for(const k in d)if(save.set[k]===undefined)save.set[k]=d[k];}
 fixSet();
 /* v6 outfit migration: old jacket items were replaced by two puffer styles + colour pickers */
 function migrateOutfit(){const s=save;['j_puffer','j_clean','o_classic'].forEach(i=>{if(!s.owned.includes(i))s.owned.push(i);});

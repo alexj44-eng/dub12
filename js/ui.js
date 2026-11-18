@@ -37,7 +37,7 @@ function renderSelect(){if(!renderSelect.init){selMap=save.map;selMode=save.gm;}
     (MAPS[selMap].sx?'<div class="mode on"><i>🏁</i><b>Ski Cross Race</b><span>You vs 3 riders out of the start gate. First to the finish wins.</span></div>':fr?'<div class="mode on"><i>🏔️</i><b>Free Roam</b><span>Explore the resort. No timer, no rivals.</span></div>':'');
   $('selModes').querySelectorAll('[data-m]').forEach(d=>d.onclick=()=>{if(fr)return;selMode=d.dataset.m;sfx('ui');renderSelect();});
   $('selMaps').innerHTML=Object.keys(MAPS).map(id=>{const M=MAPS[id],lk=!lvlOk(M.lvl),b=save.best[(M.sx?'skix':M.fr?'free':selMode)+'_'+id];
-    return '<div class="smap'+(selMap===id?' on':'')+(lk?' lk':'')+'" data-m="'+id+'"><div class="sth" style="background:'+M.sky+'">'+(M.sx?'<em>RACE</em>':M.fr?'<em>FREE ROAM</em>':'')+'</div><b>'+(lk?'🔒 ':'')+M.n+'</b><span>'+M.zone+' · '+M.diff+'</span><small>'+(lk?'Unlocks at level '+M.lvl:M.d)+'</small><i>Best: '+(b?(selMode==='time'&&!M.fr?fmt(b):b.toLocaleString()):'—')+'</i></div>';}).join('');
+    return '<div class="smap'+(selMap===id?' on':'')+(lk?' lk':'')+'" data-m="'+id+'"><div class="sth" style="background:'+M.sky+'">'+(M.sx?'<em>RACE</em>':M.fr?'<em>FREE ROAM</em>':'')+'</div><b>'+(lk?'🔒 ':'')+M.n+'</b><span>'+M.zone+' · '+M.diff+'</span><small>'+(lk?'Unlocks at level '+M.lvl:M.d)+'</small><i>Best: '+(b?((selMode==='time'&&!M.fr)||M.sx?fmt(b):b.toLocaleString()):'—')+'</i></div>';}).join('');
   $('selMaps').querySelectorAll('.smap').forEach(d=>d.onclick=()=>{if(d.classList.contains('lk')){toast('Reach level '+MAPS[d.dataset.m].lvl+' to unlock');return;}selMap=d.dataset.m;sfx('ui');renderSelect();});
   $('selGo').textContent='CONFIRM · '+MAPS[selMap].n.toUpperCase();}
 function tickQueue(dt){qT+=dt;const bt=(save.gm==='battle'&&!MAPS[save.map].fr)||!!MAPS[save.map].sx;
@@ -110,16 +110,31 @@ function renderLocker(){
     if(lockCat==='jacket'){const row=(label,key,skip)=>{const l=document.createElement('div');l.className='lbl';l.style.gridColumn='1/-1';l.style.marginTop='8px';l.textContent=label;el.appendChild(l);
         const box=document.createElement('div');box.className='swrow';el.appendChild(box);
         JCOL.forEach((c,i)=>{const d=document.createElement('button');d.className='swd'+(save.body[key]===i?' on':'');d.title=c[0];d.style.background=hex(c[1]);d.onclick=()=>setB(key,i);box.appendChild(d);});};
-      row('Jacket colour','jc');if(IDX[save.load.jacket].stripe!==false)row('Stripe colour','sc');}
+      row('Jacket colour','jc');if(IDX[save.load.jacket].stripe!==false&&!(sk&&sk.hasGear))row('Stripe colour','sc');}
+    // colour pickers for pants and gloves (first swatch = the item's own colour)
+    const crow=(label,key)=>{const l=document.createElement('div');l.className='lbl';l.style.gridColumn='1/-1';l.style.marginTop='8px';l.textContent=label;el.appendChild(l);
+      const box=document.createElement('div');box.className='swrow';el.appendChild(box);const cur=save.body[key]===undefined?-1:save.body[key];
+      const d0=document.createElement('button');d0.className='swd'+(cur<0?' on':'');d0.title='Item colour';d0.style.background='repeating-linear-gradient(45deg,#666 0 4px,#999 4px 8px)';d0.onclick=()=>setB(key,-1);box.appendChild(d0);
+      JCOL.forEach((c,i)=>{const d=document.createElement('button');d.className='swd'+(cur===i?' on':'');d.title=c[0];d.style.background=hex(c[1]);d.onclick=()=>setB(key,i);box.appendChild(d);});};
+    if(lockCat==='pants')crow('Pants colour','pnc');
+    if(lockCat==='gloves')crow('Glove colour','glc');
     // fit sliders: how baggy the jacket / pants are (live preview while dragging)
     const fit=(label,key,def)=>{const l=document.createElement('div');l.className='lbl fitlbl';l.style.gridColumn='1/-1';l.style.marginTop='8px';l.textContent=label;el.appendChild(l);
       const r=document.createElement('input');r.type='range';r.min=0;r.max=100;r.className='fitr';r.style.gridColumn='1/-1';r.value=Math.round(100*(save.body[key]!==undefined?save.body[key]:def));
       r.oninput=()=>{save.body[key]=r.value/100;sk.apply(save.load,save.body);};r.onchange=()=>{persist();for(const t in THUMB)delete THUMB[t];};el.appendChild(r);};
-    if(lockCat==='skis'){const l=document.createElement('div');l.className='lbl';l.style.gridColumn='1/-1';l.style.marginTop='8px';l.textContent='Pole colour';el.appendChild(l);
+    // pole colour (shown on the Skis and Gloves tabs)
+    function prow(){const l=document.createElement('div');l.className='lbl';l.style.gridColumn='1/-1';l.style.marginTop='8px';l.textContent='Pole colour';el.appendChild(l);
       const box=document.createElement('div');box.className='swrow';el.appendChild(box);
       POLECOL.forEach((c,i)=>{const d=document.createElement('button');d.className='swd'+(((save.body.pc||0)===i)?' on':'');d.title=c[0];d.style.background=c[2]?'linear-gradient(135deg,'+hex(c[1])+',#fff 55%,'+hex(c[1])+')':hex(c[1]);d.onclick=()=>setB('pc',i);box.appendChild(d);});}
+    if(lockCat==='skis')prow();
     if(lockCat==='jacket')fit('Jacket fit: slim ↔ baggy','jf',.3);
-    if(lockCat==='pants')fit('Pants fit: slim ↔ baggy','pf',.2);
+    // size sliders for every piece of gear (80%..120%)
+    if(lockCat==='helmet')fit('Helmet size','zh',.5);
+    if(lockCat==='goggles')fit('Goggle size','zg',.5);
+    if(lockCat==='gloves'){fit('Glove size','zgl',.5);prow();}
+    if(lockCat==='boots')fit('Boot size','zb',.5);
+    if(lockCat==='skis'){fit('Ski / board length','zs',.5);fit('Pole length','zp',.5);}
+    if(lockCat==='pants')fit('Pants fit: slim ↔ baggy','pf',.3);
     const cur=IDX[save.load[lockCat]];nm.innerHTML=lockCat==='skis'?'<b>'+(cur?cur.n:'Custom skis')+'</b>'+statBars(save.load.skis):cur?'<b style="color:'+RAR[cur.rarity].c+'">'+cur.n+'</b>'+RAR[cur.rarity].n+' '+CATS.find(c=>c[0]===lockCat)[1].toLowerCase():'<b>Custom skis</b>Your own design';}
 }
 
@@ -178,7 +193,9 @@ function renderLeaders(){
   $('lbModes').querySelectorAll('button').forEach(b=>b.onclick=()=>{lbMode=b.dataset.m;renderLeaders();});
   $('lbMaps').innerHTML=Object.keys(MAPS).map(m=>'<button data-m="'+m+'" class="'+(lbMap===m?'on':'')+'">'+MAPS[m].n+'</button>').join('');
   $('lbMaps').querySelectorAll('button').forEach(b=>b.onclick=()=>{lbMap=b.dataset.m;renderLeaders();});
-  const r=rng(lbMap.length*91+lbMode.length*7),time=lbMode==='time',rows=RIVALS.map(n=>({n,v:time?16+r()*14:Math.round(MAPBASE[lbMap]*(.35+r()*1.25)/10)*10}));
+  // seeded per map name (not just its length); new resorts/races fall back to a base score; ski cross ranks by time
+  let hsh=0;for(const ch of lbMap+lbMode)hsh=(hsh*31+ch.charCodeAt(0))>>>0;
+  const r=rng(hsh),time=lbMode==='time'||lbMode==='skix'||(MAPS[lbMap]&&MAPS[lbMap].sx),rows=RIVALS.map(n=>({n,v:time?(MAPS[lbMap]&&MAPS[lbMap].sx?9+r()*8:16+r()*14):Math.round((MAPBASE[lbMap]||(MAPS[lbMap]&&MAPS[lbMap].fr?60000:30000))*(.35+r()*1.25)/10)*10}));
   const mine=save.best[lbMode+'_'+lbMap];if(mine)rows.push({n:save.acct?save.acct.u:'You',v:mine,me:1});
   rows.sort((a,b)=>time?a.v-b.v:b.v-a.v);
   $('lbTable').innerHTML=rows.map((x,i)=>'<div class="lrow'+(x.me?' me':'')+'"><span>'+(i+1)+'</span><b>'+x.n+'</b><em>'+(time?fmt(x.v):x.v.toLocaleString())+'</em></div>').join('')+(mine?'':'<div class="lrow me"><span>–</span><b>You</b><em>No run yet</em></div>');}
@@ -337,13 +354,22 @@ function openSettings(){if(mode==='run'){paused=true;for(const k in keys)keys[k]
     el.oninput=el.onchange=()=>{let v=el.value;if(x[3]==='range'||(x[3]==='sel'&&typeof (x[4]||[[0]])[0][0]==='number'))v=+v;save.set[k]=v;show();if(k==='vol')setVol(v);applySettings();};});
   $('settings').classList.remove('hide');}
 function closeSettings(){$('settings').classList.add('hide');persist();applySettings();if(mode==='run'&&!endShown)paused=false;}
-function doCapture(code){const c=capture;capture=null;if(code==='Escape'){openSettings();return;}if(code==='Backspace'||code==='Delete')code='';binds()[c.a][c.s]=code;persist();openSettings();updateHint();}
+// rebinding: if the key already belongs to another action, unbind it there (and say so) instead of silently doubling up
+function doCapture(code){const c=capture;capture=null;if(code==='Escape'){openSettings();return;}if(code==='Backspace'||code==='Delete')code='';
+  const B=binds();if(code)for(const a in B)for(let s=0;s<B[a].length;s++)if(B[a][s]===code&&!(a===c.a&&s===c.s)){B[a][s]='';const A_=ACTIONS.find(x=>x[0]===a);toast(keyName(code)+' was '+(A_?A_[1]:a)+' · now unbound there');}
+  B[c.a][c.s]=code;persist();openSettings();updateHint(true);}
 function applySettings(){if(sk){sk.setRide(save.set.ride);sk.setPoles(save.set.poles);if(sk.gogMode!==save.set.gog){sk.gogMode=save.set.gog;sk.apply(save.load,save.body);}if(p&&mode==='run')p.name=save.acct?save.acct.u:(save.set.name||'You');}
   $('fps').classList.toggle('hide',!save.set.fps);$('spd').classList.toggle('hide',!save.set.speedo);$('hud').style.zoom=save.set.uiscale;$('ui').style.zoom=save.set.uiscale;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2)*[.6,1][save.set.res]);renderer.setSize(W,H,false);sun.castShadow=!!save.set.shadows;lobby.traverse(o=>{if(o.isDirectionalLight&&o.shadow)o.castShadow=!!save.set.shadows;});
+  renderer.setPixelRatio(basePR()*dynQ);renderer.setSize(W,H,false);sun.castShadow=!!save.set.shadows;lobby.traverse(o=>{if(o.isDirectionalLight&&o.shadow)o.castShadow=!!save.set.shadows;});
   $('hint').classList.toggle('hide',!save.set.hints);updateHint();}
-function updateHint(){const B=binds(),k=a=>'<b>'+keyName(B[a][0])+'</b>';
-  $('hint').innerHTML=k('left')+'/'+k('right')+' carve · '+k('fwd')+' tuck · '+k('back')+' brake · '+k('sw')+' switch 180 · hold '+k('jump')+' jump · '+k('cam')+' camera · air: '+k('left')+'/'+k('right')+' spin, '+k('fwd')+'/'+k('back')+' flip, '+k('g1')+'/'+k('g2')+'/'+k('g3')+' grabs · snow: '+k('bn')+'/'+k('bt')+' butter<br>steer while charging to pre-wind spins · rails: jump on, '+k('left')+'/'+k('right')+' balance, '+k('sw')+' swap, '+k('bn')+'/'+k('bt')+' press';}
+// context hints: only the controls that matter right now (snow / air / rail / lift), so new players aren't hit with a wall of keys
+let hintState='';
+function updateHint(force){const st=typeof p!=='undefined'&&p&&mode==='run'?(p.mode==='air'?'air':p.mode==='rail'?'rail':p.mode==='lift'||p.mode==='tow'?'ride':'snow'):'snow';
+  if(st===hintState&&!force)return;hintState=st;const B=binds(),k=a=>'<b>'+keyName(B[a][0])+'</b>';
+  $('hint').innerHTML=st==='air'?'In the air: '+k('left')+'/'+k('right')+' spin · '+k('fwd')+'/'+k('back')+' flip · hold '+k('g1')+' / '+k('g2')+' / '+k('g3')+' to grab · land with your skis lined up with the slope'
+    :st==='rail'?'On a rail: '+k('left')+'/'+k('right')+' keep balance · '+k('sw')+' swap · '+k('bn')+'/'+k('bt')+' nose/tail press · '+k('jump')+' pop off'
+    :st==='ride'?'Riding up: hold '+k('fwd')+' to go faster':
+    k('left')+'/'+k('right')+' carve · '+k('fwd')+' tuck · '+k('back')+' brake/hockey stop · hold '+k('jump')+' to jump (steer while holding to pre-wind spins) · '+k('bn')+'/'+k('bt')+' butter · '+k('sw')+' switch · '+k('cam')+' camera';}
 /* ---------- login ---------- */
 async function sha256(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
 async function doLogin(){const u=$('lUser').value.trim(),pw=$('lPass').value;if(!u||!pw){$('lErr').textContent='Enter a username and password.';return;}

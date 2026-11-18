@@ -2,12 +2,17 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const cv=$('c');
-const renderer=new U.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+// the post-processing composer already renders into a 4x MSAA target, so the canvas itself only needs antialiasing when post-fx are off
+const renderer=new U.WebGLRenderer({canvas:cv,antialias:!(typeof save!=='undefined'&&save&&save.set&&save.set.fx!==0),alpha:true,powerPreference:'high-performance'});
 renderer.setClearColor(0x000000,0);renderer.shadowMap.enabled=true;renderer.shadowMap.type=U.PCFSoftShadowMap;
 
 let W=1,H=1;
-const cam=new U.PerspectiveCamera(62,1,2,60000),lcam=new U.PerspectiveCamera(30,1,1,12000);
-function resize(){W=window.innerWidth;H=window.innerHeight;renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setSize(W,H,false);
+const cam=new U.PerspectiveCamera(62,1,5,60000),   /* near 5 (was 2): 2.5x more depth precision, less z-fighting on snow/decals */lcam=new U.PerspectiveCamera(30,1,1,12000);
+// render resolution: capped at 1.5x on high-DPI screens, times the Resolution setting, times automatic quality (drops when the frame rate does)
+let dynQ=1,dynT=0;const basePR=()=>Math.min(window.devicePixelRatio||1,1.5)*(save&&save.set?[.6,1][save.set.res]||1:1);
+function autoQuality(dt){if(save.set.autoq===0){if(dynQ!==1){dynQ=1;resize();}return;}dynT+=dt;if(dynT<2.5)return;dynT=0;
+  const old=dynQ;if(fpsA<44&&dynQ>.55)dynQ=Math.max(.55,dynQ-.12);else if(fpsA>58&&dynQ<1)dynQ=Math.min(1,dynQ+.06);if(dynQ!==old)resize();}
+function resize(){W=window.innerWidth;H=window.innerHeight;renderer.setPixelRatio(basePR()*dynQ);renderer.setSize(W,H,false);
   cam.aspect=lcam.aspect=W/H;cam.updateProjectionMatrix();lcam.updateProjectionMatrix();}
 window.addEventListener('resize',resize);
 
@@ -25,22 +30,29 @@ function initRiders(){
   BOTS=BOT_DEF.map(b=>{const s=makeRider(),L=botLoad(b[3]);s.apply(L.load,L.body);s.root.visible=false;scene.add(s.root);return {sk:s,name:b[0],inp:mkInp(),stat:statOf(L.load.skis),bot:{lane:b[1],skill:b[2],plan:null,dir:b[3]%2?1:-1}};});
 }
 let riders=[],mode='lobby',curMap='park',curMode='battle',endShown=false,paused=false,menuKind=null,camD={x:0,z:1},feed=[],hudT=0,st=null,bailT=0;
-function spawn(r,x){Object.assign(r,{x,z:260,y:hAt(x,260),vx:0,vz:150,vy:0,vyG:0,mode:'ground',head:0,steer:0,pitch:0,spin:0,sv:0,fv:0,roll:0,yo:0,comp:0,bp:0,butter:null,butT:0,
+function spawn(r,x){r.recent=[];r.seen={};r.comboT=0;r.lift=null;r.spawnPt=null;r.ft=0;r.fin=false;r.towT=0;Object.assign(r,{x,z:260,y:hAt(x,260),vx:0,vz:150,vy:0,vyG:0,mode:'ground',head:0,steer:0,pitch:0,spin:0,sv:0,fv:0,roll:0,yo:0,comp:0,bp:0,butter:null,butT:0,
   sw:false,swT:false,fPrev:0,tilt:0,flipAcc:0,spinAcc:0,airT:0,grabT:0,grabs:{},grab:null,crashT:0,rail:null,grindT:0,charge:0,ry:0,fin:false,time:0,score:0,mult:1,
   wind:0,bal:0,balV:0,ryT:0,railSide:false,press:null,pressT:0,swaps:0,spinOn:0,landQ:null,_tr:null,bsp:0,bdeg:0,hsk:0,hsd:1});if(r.bot)r.bot.plan=null;}
 function popup(n,pt,bail,mu){if(!save.set.popups&&!bail)return;const e=$('pop');e.className=bail?'bail':'';e.children[0].textContent=n;e.children[1].textContent=pt?'+'+pt.toLocaleString()+(mu>1?'  (x'+mu+')':''):'';void e.offsetWidth;e.classList.add('go');}
 function say(r,n,pt,bail){if(r===p)popup(n,pt,bail,r.mult);else if(pt){feed.push({t:4.5,s:r.name+' · '+n+' +'+pt.toLocaleString()});if(feed.length>3)feed.shift();}}
-function award(r,n,pts){pts=Math.round(pts/10)*10*r.mult;r.score+=pts;say(r,n,pts);r.mult=Math.min(r.mult+1,8);}
+// scoring: repeats of the same trick are worth less (60% each time it's in your last 5), a trick new to this run gets +15%,
+// the multiplier climbs to x6 and bleeds back down if you go 3 s on the snow without a trick (see comboT in step)
+function award(r,n,pts){const key=n.split(' · ')[0].replace(/^Switch /,'');r.recent=r.recent||[];r.seen=r.seen||{};
+  const rep=r.recent.filter(k=>k===key).length,nov=r.seen[key]?1:1.15;r.recent.push(key);if(r.recent.length>5)r.recent.shift();r.seen[key]=1;
+  pts=Math.round(pts*Math.pow(.6,rep)*nov/10)*10*r.mult;r.score+=pts;say(r,n+(rep?' ×'+(rep+1):''),pts);r.mult=Math.min(r.mult+1,6);r.comboT=0;}
 function endButter(r){if(r.butter){
     if(Math.abs(r.bsp||0)>Math.PI/2){r.bsp-=Math.sign(r.bsp)*Math.PI;r.sw=!r.sw;r.bdeg=(r.bdeg||0)+180;}   // finish a half-done rotation
     const deg=r.bdeg||0;
-    if(deg>=180)award(r,r.butter+' Butter '+deg,r.butT*300+deg*4);else if(r.butT>.4)award(r,r.butter+' Butter',r.butT*300);
+    const bt=Math.min(r.butT,3);   // butter hold time counts up to 3 s (no infinite farming)
+    if(deg>=180)award(r,r.butter+' Butter '+deg,bt*300+deg*4);else if(r.butT>.4)award(r,r.butter+' Butter',bt*300);
     r.butter=null;r.butT=0;r.bdeg=0;}}
 // pre-wind: steering while you load the jump stores rotation that releases at take-off
-function startAir(r){endButter(r);r.mode='air';   // keep any butter/hockey-stop angle; it eases out after landing (no snap)r.airT=0;r.flipAcc=0;r.spinAcc=0;r.grabT=0;r.grabs={};r.grab=null;r.charge=0;r.fv=0;r.swT=r.sw;
+// takeoff: fresh air state every jump (butter/hockey-stop angles are kept and ease out after landing, so nothing snaps)
+function startAir(r){endButter(r);r.mode='air';r.airT=0;r.flipAcc=0;r.spinAcc=0;r.grabT=0;r.grabs={};r.grab=null;r.charge=0;r.fv=0;r.swT=r.sw;
   const ST=r.stat||[3,3,3];r.sv=r.wind*SPIN*(1+.06*(ST[2]-3))*(r===p?save.set.rot:1);r.wind=0;r.landQ=null;}
 function scoreTrick(r,suffix,pen){pen=pen||1;
-  const flips=Math.round(Math.abs(r.flipAcc)/(Math.PI*2)),spins=Math.round(Math.abs(r.spinAcc)/Math.PI)*180;
+  // rotations must be (nearly) completed to count: within ~25° for spins, ~45° for flips (no rounding a 270 up to a 360)
+  const flips=Math.floor((Math.abs(r.flipAcc)+.8)/(Math.PI*2)),spins=Math.floor((Math.abs(r.spinAcc)+.45)/Math.PI)*180;
   let gn='',gt=.3;for(const k in r.grabs)if(r.grabs[k]>gt){gt=r.grabs[k];gn=k;}
   const sty=r===p?IDX[save.tricks.style]:IDX.t_cork,gm=gn?(TRICKS.find(t=>t.n===gn)||{m:1}).m:1;
   let name='';const cork=flips>0&&spins>=180;
@@ -107,7 +119,7 @@ function step(r,dt){
     r.vx-=G*gx/den*dt;r.vz-=G*gz/den*dt;
     let vF=r.vx*fx+r.vz*fz,vL=r.vx*lx+r.vz*lz;vL*=Math.exp(-(I.s&&ctl?3.2:9)*dt);
     const sp=Math.hypot(vF,vL),bt=ctl&&sp>(r.butter?20:55)?(I.bn?'Nose':I.bt?'Tail':null):null;   // butters hold down to a crawl once started
-    let drag=DRAG*(I.w&&ctl?.5:1)*(1-.07*(ST[0]-3))*sp*sp+FRIC;if(I.s&&ctl)drag+=750;if(r.fin)drag+=650;if(curMode==='skix')drag*=2.4;if(r.crashT>0)drag+=300;if(bt)drag+=60;
+    let drag=DRAG*(I.w&&ctl?.5:1)*(1-.07*(ST[0]-3))*sp*sp+FRIC;if(I.s&&ctl)drag+=750;if(r.fin)drag+=650;if(curMode==='skix')drag*=2.4*(r.bot?(r.rb||1):1);if(r.crashT>0)drag+=300;if(bt)drag+=60;
     if(sp>0){const k=Math.max(0,sp-drag*dt)/sp;vF*=k;vL*=k;}
     const atBase=map.stopZ&&r.z>map.stopZ;
     if(I.w&&ctl&&sp<170)vF+=320*dt;if(ctl&&!r.fin&&!atBase&&vF<110)vF+=Math.min(110-vF,900*dt); // skate/push when slow so you never stall on an up-ramp
@@ -124,6 +136,7 @@ function step(r,dt){
     // ground 180 to/from switch
     if(ctl&&I.f&&!r.fPrev){r.sw=!r.sw;r.yo-=Math.PI;if(r.butter){award(r,'Butter 180',300);}else say(r,r.sw?'Switch':'Regular',0);}
     r.fPrev=I.f;
+    r.comboT=(r.comboT||0)+dt;if(r.comboT>3&&r.mult>1&&!r.butter){r.mult--;r.comboT=2;}   // combo window: multiplier bleeds off 1 per second after 3 s without a trick
     const bsign=r.sw?-1:1;
     r.bp+=((bt?(bt==='Nose'?.36:-.36):0)-r.bp)*Math.min(1,dt*9);
     r.roll+=(r.steer*Math.min(1,sp/400)*.5-r.hsk*.32*r.hsd-r.roll)*Math.min(1,dt*7);
@@ -264,8 +277,8 @@ function hud(dt){
   const onR=p.mode==='rail';$('bal').classList.toggle('hide',!onR);if(onR){const b=$('bal').lastChild;b.style.left=(50+p.bal*48)+'%';b.style.background=Math.abs(p.bal)>.7?'#ff4d6d':Math.abs(p.bal)>.4?'#ffb03f':'#39d98a';}
   if(curMode==='time')$('timer').textContent=fmt(p.time);
   feed.forEach(f=>f.t-=dt);feed=feed.filter(f=>f.t>0);
-  hudT-=dt;if(hudT<=0){hudT=.2;if(map.fr&&curMode!=='skix')resortHud();
-    if(curMode==='skix'&&RACE){$('mapName').textContent='🏁 Ski Cross · L-Hill';$('board').innerHTML=raceRank().map((r,i)=>'<div class="'+(r===p?'me':'')+'"><span>'+(i+1)+'. '+r.name+'</span><span>'+(r.fin?fmt(r.ft):'')+'</span></div>').join('');}
+  hudT-=dt;if(hudT<=0){hudT=.2;if(save.set.hints)updateHint();if(map.fr&&curMode!=='skix')resortHud();
+    if(curMode==='skix'&&RACE){$('mapName').textContent='🏁 Ski Cross · '+CUR.n+' · '+RACE.T.n;$('board').innerHTML=raceRank().map((r,i)=>'<div class="'+(r===p?'me':'')+'"><span>'+(i+1)+'. '+r.name+'</span><span>'+(r.fin?fmt(r.ft):'')+'</span></div>').join('');}
     if(curMode==='battle'){$('board').innerHTML=riders.slice().sort((a,b)=>b.score-a.score).map((r,i)=>'<div class="'+(r===p?'me':'')+'"><span>'+(i+1)+'. '+r.name+(r===p&&isStaff()?' <i class=tag>'+save.acct.role.toUpperCase()+'</i>':'')+'</span><span>'+r.score.toLocaleString()+'</span></div>').join('');
       $('feed').innerHTML=feed.map(f=>'<div>'+f.s+'</div>').join('');}}
 }
@@ -298,14 +311,14 @@ function drawRun(dt){
   if(save.set.shake&&shake>0&&dt>0){cam.position.x+=(Math.random()-.5)*shake*14;cam.position.y+=(Math.random()-.5)*shake*14;shake=Math.max(0,shake-dt*1.6);}
   snowUpdate(dt);
   const fv=save.set.fov-2+Math.min(16,sp*.018);if(Math.abs(cam.fov-fv)>.2){cam.fov+=(fv-cam.fov)*Math.min(1,dt*4);cam.updateProjectionMatrix();}
-  const mg=runG.userData.mtn;mg.position.set(cam.position.x*.95,cam.position.y-3700,cam.position.z+17000);
+  const mg=runG.userData.mtn;mg.position.set(cam.position.x*.95,cam.position.y-4600,cam.position.z+17000);   // base sits below the horizon (haze skirt fills underneath)
   const ch=$('charge');ch.style.opacity=p.charge>0?1:0;ch.firstChild.style.width=(p.charge*100)+'%';
   fxRun(dt);updateLift(dt);if(map.fr){updateLod();updateResortLifts(dt);}present(scene,cam,dt);
 }
 
 /* ---------- flow ---------- */
 function newStats(){return {corks:0,switchTricks:0,doubles:0,big:0,butterT:0,slides:0,airT:0,grabT:0,finished:0,wins:0};}
-function startRun(id,gm){curMap=id;curMode=gm||curMode;const FR=!!MAPS[id].fr,SX=!!MAPS[id].sx;if(FR)curMode=SX?'skix':'free';if(FR)buildResort();else buildMap(id);buildGfx();
+function startRun(id,gm){curMap=id;curMode=gm||curMode;const FR=!!MAPS[id].fr,SX=!!MAPS[id].sx;if(FR)curMode=SX?'skix':'free';if(FR)buildResort(MAPS[id].rid||'blue');else buildMap(id);buildGfx();
   const multi=curMode==='battle'||SX;riders=multi?[p].concat(BOTS):[p];BOTS.forEach(b=>b.sk.root.visible=multi);RACE=null;
   p.stat=statOf(save.load.skis);p.name=save.acct?save.acct.u:(save.set.name||'You');BOTS.forEach(b=>b.bot.sk_=b.bot.sk_||b.bot.skill);BOTS.forEach(b=>b.bot.skill=Math.min(1,b.bot.sk_*[.5,1,1.45][save.set.bots]));spawn(p,0);if(multi)BOTS.forEach(b=>spawn(b,b.bot.lane));audioStart();
   clearDebris();clearTracks();riders.forEach(r=>{if(r!==p&&r.sk.setRide)r.sk.setRide(Math.random()<.3?'board':'ski');r.sk.gear(true);});if(p.sk.setRide)p.sk.setRide(save.set.ride);sk.setPoles(save.set.poles);st=newStats();endShown=false;paused=false;menuKind=null;shake=0;feed=[];pPos.fill(-1e6);pLife.fill(0);camD={x:0,z:1};cam.position.set(0,p.y+80,p.z-160);
@@ -314,9 +327,10 @@ function startRun(id,gm){curMap=id;curMode=gm||curMode;const FR=!!MAPS[id].fr,SX
   $('prompt').classList.toggle('hide',!FR||SX);if(typeof tmapOpen!=='undefined'&&tmapOpen)closeTrailMap();if(SX)raceSetup();else if(FR)arriveTop(p);
   setMode('run');}
 function openMenu(){openSettings();}
-function endRun(){endShown=true;const key=curMode+'_'+curMap,b=save.best[key]||0;let title,html;const lv0=level();
+function endRun(){endShown=true;paused=true;for(const k in keys)keys[k]=0;const key=curMode+'_'+curMap,b=save.best[key]||0;let title,html;const lv0=level();
   let xp=0,coins=0;
-  if(curMode==='skix'){const rk=raceRank(),pos=rk.indexOf(p)+1,t=+(p.ft||0).toFixed(2),nb=!b||t<b;if(nb)save.best[key]=t;title=['1ST','2ND','3RD','4TH'][pos-1]+' PLACE';
+  if(curMode==='skix'&&!p.fin){title='DNF';html='You left the race before the finish line. No rewards.';xp=0;coins=0;}   // no free wins by quitting in the gate
+  else if(curMode==='skix'){const rk=raceRank(),pos=rk.indexOf(p)+1,t=+(p.ft||0).toFixed(2),nb=!b||t<b;if(nb)save.best[key]=t;title=['1ST','2ND','3RD','4TH'][pos-1]+' PLACE';
     if(pos===1)st.wins=1;xp=200+[400,250,120,60][pos-1]+(nb?100:0);coins=50+[150,90,50,20][pos-1];
     html=(nb?'New best time! ':'')+fmt(t)+rk.map((r,i)=>'<div class="'+(r===p?'me':'')+'">'+(i+1)+'. '+r.name+(r.fin?' — '+fmt(r.ft):' — DNF')+'</div>').join('');}
   else if(curMode==='time'){const t=+p.time.toFixed(2),nb=!b||t<b;if(nb){save.best[key]=t;}title=fmt(t);html=nb?'New best time!':'Best: '+fmt(b);xp=300+(nb?200:0);coins=60+(nb?60:0);}
@@ -324,7 +338,10 @@ function endRun(){endShown=true;const key=curMode+'_'+curMap,b=save.best[key]||0
     if(curMode==='battle'){const rk=riders.slice().sort((a,c)=>c.score-a.score),pos=rk.indexOf(p)+1;title=pos===1?'VICTORY':'#'+pos+' of 4';if(pos===1){st.wins=1;xp+=300;coins+=100;}
       html=rk.map((r,i)=>'<div class="'+(r===p?'me':'')+'">'+(i+1)+'. '+r.name+' — '+r.score.toLocaleString()+'</div>').join('');}
     else{title=p.score.toLocaleString();html=p.score>b&&p.score>0?'New best!':'Best: '+b.toLocaleString();}}
-  const done=questProgress({corks:st.corks,switchTricks:st.switchTricks,doubles:st.doubles,big:st.big,butterT:st.butterT,slides:st.slides,airT:st.airT,grabT:st.grabT,runs:1,wins:st.wins,bestRun:p.score});
+  // free roam: no rewards for opening and instantly quitting (needs some actual riding: 1,000+ points)
+  const idle=curMode==='free'&&map&&map.fr&&p.score<1000;if(idle){xp=0;coins=0;html=(html||'')+'<div>Ride and land some tricks to earn XP and coins in free roam.</div>';}
+  const dnf=curMode==='skix'&&!p.fin;
+  const done=idle||dnf?[]:questProgress({corks:st.corks,switchTricks:st.switchTricks,doubles:st.doubles,big:st.big,butterT:st.butterT,slides:st.slides,airT:st.airT,grabT:st.grabT,runs:1,wins:st.wins,bestRun:p.score});
   save.xp+=xp;save.coins+=coins;persist();const lv1=level();
   $('endMap').textContent=MODES[curMode].n+' · '+MAPS[curMap].n;$('final').textContent=title;$('best').innerHTML=html;
   $('rew').innerHTML='<span>+'+xp.toLocaleString()+' XP</span><span><i class="coin"></i>'+coins.toLocaleString()+'</span>'+(lv1>lv0?'<span class="lvup">LEVEL UP · '+lv1+'</span>':'')+
@@ -332,9 +349,9 @@ function endRun(){endShown=true;const key=curMode+'_'+curMap,b=save.best[key]||0
   $('end').classList.remove('hide');refreshWallet();}
 let last=0;
 function frame(t){
-  const dt=Math.min(.05,(t-last)/1000||0);last=t;if(dt>0){fpsA+=(1/dt-fpsA)*.05;if(save.set.fps)$('fps').textContent=Math.round(fpsA)+' FPS';}
+  const dt=Math.min(.05,(t-last)/1000||0);last=t;if(dt>0){fpsA+=(1/dt-fpsA)*.05;if(save.set.fps)$('fps').textContent=Math.round(fpsA)+' FPS'+(dynQ<1?' · '+Math.round(dynQ*100)+'%':'');autoQuality(dt);}
   if(mode==='run'){
-    if(!paused){const ts=save.set.slowmo&&p.mode==='air'&&p.airT>.35?.55:1,sd=dt*ts,n=Math.max(1,Math.ceil(sd*120)),h=sd/n;if(dt>0)for(let i=0;i<n;i++){for(const r of riders){if(r.bot)ai(r);step(r,h);}if(riders.length>1)riderBumps();}stepDebris(sd);
+    if(!paused){const ts=save.set.slowmo&&p.mode==='air'&&p.airT>.35&&curMode!=='skix'?.55:1,sd=dt*ts,n=Math.max(1,Math.ceil(sd*120)),h=sd/n;if(dt>0)for(let i=0;i<n;i++){for(const r of riders){if(r.bot)ai(r);step(r,h);}if(riders.length>1)riderBumps();}stepDebris(sd);
       CLOTH.t.value+=dt;CLOTH.w.value+=((Math.min(1,Math.hypot(p.vx,p.vz)/900)*(p.mode==='air'?1.4:1))-CLOTH.w.value)*Math.min(1,dt*3);
       sfxWind(Math.hypot(p.vx,p.vz),p.mode,Math.abs(p.steer));hud(dt);if(p.fin&&!endShown&&p.mode==='ground'&&Math.hypot(p.vx,p.vz)<8)endRun();}
     if(paused)sfxWind(0);drawRun(paused?0:dt);}

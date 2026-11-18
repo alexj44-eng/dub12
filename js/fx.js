@@ -92,10 +92,13 @@ function buildComposer(){if(!compOK)return;
 let compW=0,compH=0,compPR=0;
 function present(sc,camera,dt){
   if(!fxOn()){renderer.render(sc,camera);return;}
-  const pr=renderer.getPixelRatio();if(!comp||compW!==W||compH!==H||compPR!==pr||compAO!==save.set.ao){compW=W;compH=H;compPR=pr;compAO=save.set.ao;if(comp){comp.renderTarget1.dispose();comp.renderTarget2.dispose();}buildComposer();}
+  // build the composer once; window resizes and auto-quality steps only resize its buffers (rebuilding leaked the bloom targets)
+  const pr=renderer.getPixelRatio();
+  if(!comp||compAO!==save.set.ao){compW=W;compH=H;compPR=pr;compAO=save.set.ao;if(comp){comp.renderTarget1.dispose();comp.renderTarget2.dispose();if(bloom&&bloom.dispose)bloom.dispose();}buildComposer();}
+  else if(compW!==W||compH!==H||compPR!==pr){compW=W;compH=H;compPR=pr;const w=Math.max(1,W*pr|0),h=Math.max(1,H*pr|0);comp.setSize(w,h);}
   rPass.scene=sc;rPass.camera=camera;if(sao){sao.scene=sc;sao.camera=camera;}grade.uniforms.uTime.value+=dt||.016;
   const night=sc===scene&&map&&MAPS[map.id]&&(MAPS[map.id].night||(save.set.tod==='night'));
-  bloom.strength=night?.5:.16;bloom.threshold=night?.72:.94;
+  bloom.strength=night?.5:.16;bloom.threshold=night?.72:.94;bloom.enabled=!!night||sc!==scene;   // daytime bloom was nearly invisible but cost ~10 full-screen passes
   comp.render(dt);}
 
 /* ---------- ski tracks ---------- */
@@ -107,10 +110,11 @@ trMesh.frustumCulled=false;trMesh.renderOrder=1;scene.add(trMesh);
 function clearTracks(){trPos.fill(-1e6);trGeo.attributes.position.needsUpdate=true;trI=0;}
 function trackStep(r){if(r.mode!=='ground'||r.crashT>0){r._tr=null;return;}
   const yaw=bodyYaw(r),fx=Math.sin(yaw),fz=Math.cos(yaw),lx=fz,lz=-fx;
-  const cur=[-1,1].map(sd=>{const ox=r.x+lx*sd*5*r.sk.hs,oz=r.z+lz*sd*5*r.sk.hs;return [ox,oz];});
-  if(!r._tr){r._tr=cur;r._tr.cx=r.x;r._tr.cz=r.z;return;}const dx=r.x-r._tr.cx,dz=r.z-r._tr.cz;if(dx*dx+dz*dz<36)return;
-  const w=2.2+Math.abs(r.steer)*1.6;
-  for(let s=0;s<2;s++){const a=r._tr[s],b=cur[s];if(!a)continue;const q=(trI++%TQ),o=q*12;
+  const board=r.sk.ride==='board';   // snowboard: one wide track down the middle; skis: two narrow ones
+  const cur=(board?[0]:[-1,1]).map(sd=>{const ox=r.x+lx*sd*5*r.sk.hs,oz=r.z+lz*sd*5*r.sk.hs;return [ox,oz];});
+  if(!r._tr||r._tr.length!==cur.length){r._tr=cur;r._tr.cx=r.x;r._tr.cz=r.z;return;}const dx=r.x-r._tr.cx,dz=r.z-r._tr.cz;if(dx*dx+dz*dz<36)return;
+  const w=board?6.4+Math.abs(r.steer)*2:2.2+Math.abs(r.steer)*1.6;
+  for(let s=0;s<cur.length;s++){const a=r._tr[s],b=cur[s];if(!a)continue;const q=(trI++%TQ),o=q*12;
     const sx=lx*w,sz=lz*w;const pts=[[a[0]-sx,a[1]-sz],[a[0]+sx,a[1]+sz],[b[0]-sx,b[1]-sz],[b[0]+sx,b[1]+sz]];
     pts.forEach((p,k)=>{trPos[o+k*3]=p[0];trPos[o+k*3+1]=hAt(p[0],p[1])+.35;trPos[o+k*3+2]=p[1];});}
   r._tr=cur;r._tr.cx=r.x;r._tr.cz=r.z;trGeo.attributes.position.needsUpdate=true;}

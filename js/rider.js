@@ -9,10 +9,17 @@ function loadAssets(url,onDone,onErr){
     for(const k in A){A[k].position.set(0,0,0);A[k].rotation.set(0,0,0);A[k].scale.set(1,1,1);}};
   const b64=s=>{const bin=atob(s),buf=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);return buf.buffer;};
   // environment pack built in Blender (tools/make_env.py); optional so the game still runs without it
-  const env=()=>{if(!window.DUB12_ENV_GLB){onDone();return;}const e=b64(window.DUB12_ENV_GLB);window.DUB12_ENV_GLB=null;L.parse(e,'',g=>{take(g);onDone();},err=>{console.warn('env pack failed',err);onDone();});};
+  // gear pack (your fitted jacket + pants, tools/export_gear.py); also optional
+  const gear=()=>{if(!window.DUB12_GEAR_GLB){onDone();return;}const e=b64(window.DUB12_GEAR_GLB);window.DUB12_GEAR_GLB=null;
+    L.parse(e,'',g=>{g.scene.traverse(o=>{if(o.isMesh&&!o.geometry.attributes.color)whiteCols(o.geometry);});take(g);onDone();},err=>{console.warn('gear pack failed',err);onDone();});};
+  const env=()=>{if(!window.DUB12_ENV_GLB){gear();return;}const e=b64(window.DUB12_ENV_GLB);window.DUB12_ENV_GLB=null;L.parse(e,'',g=>{take(g);gear();},err=>{console.warn('env pack failed',err);gear();});};
   const got=g=>{take(g);env();};
-  if(window.DUB12_GLB){const buf=b64(window.DUB12_GLB);window.DUB12_GLB=null;L.parse(buf,'',got,onErr);}
-  else L.load(url,got,undefined,onErr);
+  if(window.DUB12_GLB){const buf=b64(window.DUB12_GLB);window.DUB12_GLB=null;L.parse(buf,'',got,onErr);return;}
+  // hosted site: small Draco-compressed binary packs (tools/compress.py), fetched in parallel and cached by the browser
+  if(U.DRACOLoader){const D=new U.DRACOLoader();D.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/gltf/');L.setDRACOLoader(D);}
+  const fetchGlb=n=>new Promise(res=>L.load('assets/'+n+'.glb',g=>res(g),undefined,e=>{console.warn('pack',n,'failed',e);res(null);}));
+  Promise.all(['models','env','gear'].map(fetchGlb)).then(([m,e,g])=>{if(!m){onErr&&onErr('models');return;}take(m);if(e)take(e);
+    if(g){g.scene.traverse(o=>{if(o.isMesh&&!o.geometry.attributes.color)whiteCols(o.geometry);});take(g);}onDone();}).catch(err=>{console.error('asset load failed',err);onErr&&onErr(err);});
 }
 const mname=m=>(m.name||'').replace(/\.\d+$/,'');
 
@@ -89,6 +96,8 @@ function fitClothes(){if(fitClothes.done)return;fitClothes.done=true;
   edit(A.hips,(x,y,z)=>{const k=ss(-4.5,-1.5,y),f=(1-.1*k)*.94;return [x*f,y-.5*k,z*f];});
   // thigh is a unit-length limb (y=+.5 at the hip): taper the hip end so it stays inside the jacket
   edit(A.thigh,(x,y,z)=>{const f=1-.2*ss(-.1,.5,y);return [x*f,y,z*f];});
+  // fitted pants: flare the bottom of each leg (limb y=-.5 is the ankle end) so the hem sits over the boot cuff like real ski pants
+  ['gp_shin_P','gp_shin_N'].forEach(n=>{if(A[n])edit(A[n],(x,y,z)=>{const f=1+.55*ss(.05,-.5,y);return [x*f,y,z*f];});});
   // boot cuffs sit inside the slim pant leg: shrink the upper cuff, keep the lower shell full size so the boot shows
   ['free','race','retro'].forEach(s=>{if(A['boot_'+s])edit(A['boot_'+s],(x,y,z)=>{const k=ss(3.4,5.6,y),f=1-.38*k;return [x*f,y,(z+.2)*f-.2];});});}
 /* ---------- rider ---------- */
@@ -113,12 +122,15 @@ function makeRider(){
   const lower=new U.Group();lower.position.y=20;body.add(lower);const lw=new U.Group();lw.position.y=-20;lower.add(lw);
   const add=(o,par,x,y,z)=>{if(x!==undefined)o.position.set(x,y,z);par.add(o);return o;};
   const jsph=(r,mat)=>{const m=new U.Mesh(whiteCols(new U.SphereGeometry(r,20,14)),mat);m.castShadow=true;return m;};
+  // gear pack (tools/export_gear.py): the user's puffer jacket with hood + pants, cut into rider parts, realistic proportions
+  const GEAR=['gj_torso','gj_zip','gj_hood_up','gj_hood_down','gp_hips','gear_meta'].concat(...['P','N'].map(s=>['gj_uarm_'+s,'gj_farm_'+s,'gp_thigh_'+s,'gp_shin_'+s])).every(n=>A[n]),GM=GEAR&&A.gear_meta?A.gear_meta.userData:{};
   const skiOnly=[],skiG=[],boots=[],thigh=[],shin=[],knee=[],uarm=[],farm=[],elb=[],hand=[],pole=[],shoulder=[];
   [1,-1].forEach(sd=>{
     const sg=new U.Group();sg.position.set(sd*5.0,0,0);lw.add(sg);
     const so=add(new U.Group(),sg);add(dress(part('ski')),so);add(dress(part('binding')),so);skiOnly.push(so);
     const bt={};['free','race','retro'].forEach(s=>{bt[s]=add(dress(part('boot_'+s),{strap:'sole'}),sg);});boots.push(bt);
-    skiG.push(sg);thigh.push(add(dress(part('thigh')),body));shin.push(add(dress(part('shin')),body));const k=jsph(4.25,M.pants);knee.push(add(k,body));});
+    const gs=sd>0?'P':'N';   // your fitted pants (gear pack) replace the built-in legs when present
+    skiG.push(sg);thigh.push(add(dress(part(GEAR?'gp_thigh_'+gs:'thigh')),body));shin.push(add(dress(part(GEAR?'gp_shin_'+gs:'shin')),body));const k=jsph(4.25,M.pants);k.visible=!GEAR;knee.push(add(k,body));});
   // snowboard: lies across the stance (along the lower-body x axis); top graphic = your ski design, black base, steel edges, two strap bindings
   const boardG=new U.Group();lw.add(boardG);boardG.visible=false;
   {const Lh=32,Wh=6.6,sh=new U.Shape();sh.moveTo(-Lh+6,-Wh);sh.lineTo(Lh-6,-Wh);sh.quadraticCurveTo(Lh+.5,-Wh,Lh,0);sh.quadraticCurveTo(Lh+.5,Wh,Lh-6,Wh);
@@ -140,11 +152,14 @@ function makeRider(){
   const torsoG=new U.Group();upper.add(torsoG);
   // v2 jacket: puffer with funnel collar, chest stripe, zipper, chest patch and a hood lying on the back
   const V2=!!A.torso_v2;let hoodDown;
-  if(V2){add(dress(part('torso_v2')),torsoG);hoodDown=add(dress(part('hood_down_v2')),torsoG);}
+  let gHips=null;
+  if(GEAR){add(dress(part('gj_torso')),torsoG);add(dress(part('gj_zip')),torsoG);hoodDown=add(dress(part('gj_hood_down')),torsoG);hoodDown.userData.gear=1;gHips=add(dress(part('gp_hips')),upper);}
+  else if(V2){add(dress(part('torso_v2')),torsoG);hoodDown=add(dress(part('hood_down_v2')),torsoG);}
   else{add(dress(part('torso')),torsoG);hoodDown=add(dress(part('hood_down')),torsoG);add(dress(part('gaiter')),upper);}
-  add(dress(part('hips')),torsoG);
+  if(!GEAR)add(dress(part('hips')),torsoG);
   const SH=[new U.Vector3(8.35,13.3,0),new U.Vector3(-8.35,13.3,0)];
-  [0,1].forEach(i=>{shoulder.push(add(jsph(2.8,V2?M.jacket_sh:M.jacket),upper));uarm.push(add(dress(part('uarm'),V2?{jacket:'jacket_arm'}:null),upper));farm.push(add(dress(part('farm')),upper));elb.push(add(jsph(2.4,M.jacket),upper));
+  [0,1].forEach(i=>{const gs=i?'N':'P';shoulder.push(add(jsph(2.8,V2?M.jacket_sh:M.jacket),upper));uarm.push(add(dress(part(GEAR?'gj_uarm_'+gs:'uarm'),V2&&!GEAR?{jacket:'jacket_arm'}:null),upper));farm.push(add(dress(part(GEAR?'gj_farm_'+gs:'farm')),upper));elb.push(add(jsph(2.4,M.jacket),upper));
+    if(GEAR){shoulder[i].visible=false;elb[i].visible=false;}
     const hg=add(new U.Group(),upper);add(dress(part('glove')),hg);hand.push(hg);pole.push(add(dress(part('pole'),{metal:'pole'}),upper));});
   const head=new U.Group();head.position.set(0,V2?22.2:22.6,.9);if(V2){head.scale.setScalar(.84);M.strap.map=strapTex();M.strap.side=U.DoubleSide;M.frame.side=U.DoubleSide;M.lens.side=U.DoubleSide;}upper.add(head);
   // sculpted Blender head (skull, sockets, nose, lips, eyeballs, lids, brows, ears in one piece); falls back to the original parts
@@ -153,7 +168,8 @@ function makeRider(){
   else{add(dress(part('head')),head);add(dress(part('eyes')),head);brows=add(dress(part('brows')),head);['nose','lips','lids'].forEach(n=>add(dress(part(n)),head));ears=add(dress(part('ears')),head);}
   const masks={};['clava','gaiter','bandana'].forEach(m=>{masks[m]=add(dress(part('mask_'+m)),head);});const tops={};['crop','flow','pony','braids','curls','buzz'].forEach(t=>{tops[t]=add(dress(part('top_'+t)),head);});
   // hood rides on the torso (not the head) so it stays joined to the jacket when the head turns
-  const HV2=V2&&!!A.hood_up_v2,hoodUp=add(dress(part(HV2?'hood_up_v2':'hood_up'),{hood:'jacket'}),upper);if(!HV2){hoodUp.position.copy(head.position);if(V2)hoodUp.scale.setScalar(.84);}
+  const HV2=V2&&!!A.hood_up_v2,hoodUp=add(dress(part(GEAR?'gj_hood_up':HV2?'hood_up_v2':'hood_up'),{hood:'jacket'}),upper);if(!HV2&&!GEAR){hoodUp.position.copy(head.position);if(V2)hoodUp.scale.setScalar(.84);}
+  if(GEAR){head.position.set(0,GM.head_y,GM.head_z);head.scale.setScalar(GM.head_s);M.jacket.side=M.pants.side=U.DoubleSide;}   // cut seams never show through   // realistic head size/height to match the fitted jacket
   const hairs={};['crop','flow','pony','braids','curls','buzz'].forEach(s=>{if(A['hair_'+s])hairs[s]=add(dress(part('hair_'+s)),head);});
   const helmets={};['shell','pro','bucket','beanie'].forEach(s=>{helmets[s]=add(dress(part('helmet_'+s),{strap:'hstrap'}),head);});
   const gpiv=new U.Group();gpiv.position.set(0,.9,0);head.add(gpiv);const gogs={};
@@ -161,9 +177,10 @@ function makeRider(){
   root.traverse(o=>{if(o.isMesh)o.castShadow=true;});
   const s={c:0,lean:.1,tw:0,lX:0,tk:0,sy:0,ss:0,hl:new U.Vector3(9.5,-3,3),hr:new U.Vector3(-9.5,-3,3),pd:new U.Vector3(.12,-.95,-.25),gu:0,look:0};
   const tA=new U.Vector3(),tB=new U.Vector3(),tE=new U.Vector3(),tH=new U.Vector3();
+  let poleK=1,gloveK=1;
   let bs=1,legX=3.9,hem=1.6,helmetStyle='shell',gogBase=1;
   let poleOn=true;
-  const R={root,flipG,M,head,hs:1,headS:V2?.84:1,
+  const R={root,flipG,M,head,hs:1,headS:GEAR?GM.head_s:V2?.84:1,hasGear:GEAR,
     // first-person camera sits where the head is: hide head, collar/torso and hood so they don't block the view
     firstPerson(on){head.visible=!on;torsoG.visible=!on;hoodUp.visible=!on&&!!R.hoodOn;},gearObjs:()=>ride==='board'?[]:skiOnly.concat(pole),setPoles(v){poleOn=!!v;pole.forEach(o=>o.visible=poleOn&&ride!=='board');},
     gear(on){skiOnly.forEach(o=>o.visible=on&&ride!=='board');pole.forEach(o=>o.visible=on&&poleOn&&ride!=='board');boardG.visible=ride==='board';},
@@ -180,11 +197,17 @@ function makeRider(){
       {const pc=POLECOL[(bd&&bd.pc)||0]||POLECOL[0];M.pole.color.setHex(pc[1]);M.pole.metalness=pc[2]?.75:.15;M.pole.roughness=pc[2]?.25:.38;}   // pole colour
       M.pants.color.setHex(P.pat?0xffffff:P.c);M.pants.map=P.pat?patTex(P.pat,P.c,P.p2):null;M.pants.needsUpdate=true;
       M.glove.color.setHex(Gl.c);M.glove_acc.color.setHex(Gl.a);
+      // colour pickers override the item colours (pants / gloves); -1 or unset = the item's own colour
+      if(bd&&bd.pnc>=0&&JCOL[bd.pnc]){M.pants.color.setHex(JCOL[bd.pnc][1]);M.pants.map=null;M.pants.needsUpdate=true;}
+      if(bd&&bd.glc>=0&&JCOL[bd.glc])M.glove.color.setHex(JCOL[bd.glc][1]);
       M.helmet.color.setHex(He.c);M.helmet_acc.color.setHex(He.a);const matte=/Matte|Sand|Olive/.test(He.n);M.helmet.metalness=He.metal?.9:0;M.helmet.roughness=He.metal?.18:(He.style==='beanie'?.95:matte?.62:.3);M.helmet.clearcoat=He.style==='beanie'||matte?0:1;
-      for(const k in helmets)helmets[k].visible=k===He.style;helmetStyle=He.style;gogBase=He.style==='none'?.84:He.style==='beanie'?.93:1;
+      // size sliders (locker): 0..1, default .5 = normal size, range 80%..120%
+      const zsc=k=>.8+.4*((bd&&bd[k]!==undefined)?bd[k]:.5);
+      for(const k in helmets){helmets[k].visible=k===He.style;helmets[k].scale.setScalar(zsc('zh'));}helmetStyle=He.style;gogBase=(He.style==='none'?.84:He.style==='beanie'?.93:1)*zsc('zg');
+      skiOnly.forEach(o=>o.scale.z=zsc('zs'));boardG.scale.x=zsc('zs');poleK=zsc('zp');pole.forEach(o=>o.scale.y=poleK);gloveK=zsc('zgl');
       const Ma=IDX[load.mask||'m_none'];R.mask=Ma.style;for(const k in masks)masks[k].visible=k===Ma.style;M.mask.color.setHex(Ma.pat?0xffffff:Ma.c);M.mask.map=Ma.pat?patTex(Ma.pat,Ma.c,Ma.p2):null;M.mask.needsUpdate=true;
       const gOff=R.gogMode==='off';for(const k in gogs)gogs[k].visible=k===Go.style&&!gOff;R.noGog=Go.style==='none'||gOff;M.frame.color.setHex(Go.f);M.lens.color.setHex(Go.l);M.strap.color.setHex(Go.s);
-      for(const b of boots)for(const k in b)b[k].visible=k===Bo.style;M.boot_shell.color.setHex(Bo.c);M.boot_cuff.color.setHex(Bo.a);
+      for(const b of boots)for(const k in b){b[k].visible=k===Bo.style;b[k].scale.setScalar(zsc('zb'));}M.boot_shell.color.setHex(Bo.c);M.boot_cuff.color.setHex(Bo.a);
       const sk=load.skis;M.ski_top.map=skiTex(sk);M.ski_top.needsUpdate=true;
       const base=sk.startsWith('custom')?0x1a1a1e:IDX[sk].base;M.bind.color.setHex(base);M.ski_base.color.setHex(shade(base,-.5));
       if(bd){M.skin.color.setHex(BODY.skin[bd.skin]);M.lip.color.setHex(BODY.skin[bd.skin]).lerp(new U.Color(0xa4504a),.42).multiplyScalar(.88);
@@ -196,9 +219,14 @@ function makeRider(){
         // fit sliders (0 = slim, 1 = baggy): jacket body/arms, pant legs and how far the hem falls over the boot
         if(V2){const jf=bd.jf!==undefined?bd.jf:.3,pf=bd.pf!==undefined?bd.pf:.2,jk=.94+.18*jf,ak=.92+.22*jf;
           T.tx*=jk;T.tz*=jk;T.arm*=ak;T.th=.72+.26*pf;T.sn=.68+.42*pf;T.kn=.6+.26*pf;hem=1.6+3*pf;}
-        torsoG.scale.set(T.tx,T.ty,T.tz);SH[0].set(T.sh*(T.tx/.76),13.3*T.ty,0);SH[1].set(-T.sh*(T.tx/.76),13.3*T.ty,0);legX=T.leg;
-        if(V2){head.position.y=22.2*T.ty;}
-        [...uarm,...farm].forEach(m=>{m.scale.x=m.scale.z=T.arm;});[...elb,...shoulder].forEach(m=>m.scale.setScalar(T.arm));hand.forEach(h=>h.scale.setScalar(V2?.85:1));
+        if(GEAR){// fitted gear: real proportions from the body it was fitted to; sliders still loosen/tighten it
+          // fuller, athletic build: broad torso and shoulders, solid arms and legs (sliders go from fitted to baggy on top of this)
+          const jf=bd.jf!==undefined?bd.jf:.3,pf=bd.pf!==undefined?bd.pf:.3,jk=1.22+.22*jf,lk=1.42+.4*pf;
+          Object.assign(T,{tx:jk,ty:1.04,tz:jk*1.05,sh:GM.sh_x*.76*1.04,arm:1.38+.25*jf,leg:GM.hip_x*1.45/.9,th:lk,sn:lk*1.02,kn:1});hem=.8+1.2*pf;
+          if(gHips)gHips.scale.set(1.3+.3*pf,1,1.3+.3*pf);}
+        torsoG.scale.set(T.tx,T.ty,T.tz);const shY=GEAR?GM.sh_y+.6:13.3*T.ty,shZ=GEAR?GM.sh_z:0;SH[0].set(T.sh*(T.tx/.76),shY,shZ);SH[1].set(-T.sh*(T.tx/.76),shY,shZ);legX=T.leg;
+        if(V2&&!GEAR){head.position.y=22.2*T.ty;}
+        [...uarm,...farm].forEach(m=>{m.scale.x=m.scale.z=T.arm;});[...elb,...shoulder].forEach(m=>m.scale.setScalar(T.arm));hand.forEach(h=>h.scale.setScalar((GEAR?.6:V2?.85:1)*gloveK));   // gloves sized to the jacket cuffs
         thigh.forEach(m=>{m.scale.x=m.scale.z=T.th;});shin.forEach(m=>{m.scale.x=m.scale.z=T.sn;});knee.forEach(m=>m.scale.setScalar(T.kn));}
     },
     pose(o,dt){
@@ -233,7 +261,7 @@ function makeRider(){
         if(V2){tB.y-=hem;tB.z+=.5;}limb(shin[i],tB,tE);knee[i].position.copy(tE);   // pant cuff sits on the boot, upper boot still shows
         tB.copy(i?s.hr:s.hl);tH.set(sd*.55,-.5,-.65);shoulder[i].position.copy(SH[i]);ik(tE,SH[i],tB,9.6,9.6,tH);limb(uarm[i],tE,SH[i]);limb(farm[i],tB,tE);elb[i].position.copy(tE);
         hand[i].position.copy(tB);hand[i].quaternion.copy(farm[i].quaternion);
-        tA.set(s.pd.x*sd,s.pd.y,s.pd.z).normalize();tE.copy(tB).addScaledVector(tA,15);pole[i].position.copy(tE);pole[i].quaternion.setFromUnitVectors(UPV,tH.copy(tA).negate());}
+        tA.set(s.pd.x*sd,s.pd.y,s.pd.z).normalize();tE.copy(tB).addScaledVector(tA,15*poleK);pole[i].position.copy(tE);pole[i].quaternion.setFromUnitVectors(UPV,tH.copy(tA).negate());}
     }};
   return R;
 }

@@ -6,7 +6,9 @@
    The ridge runs left (south) to right (north); downhill is +z. */
 'use strict';
 const MX=px=>(px-836)*13,MZ=py=>(py-85)*18;
-const RS={W:11300,ZMIN:-1800,L:10700,GS:40,baseZ:8300,liftSpeed:260};
+const RS_BLUE={W:11300,ZMIN:-1800,L:10700,GS:40,baseZ:8300,liftSpeed:260};
+let RS=RS_BLUE,CUR={id:'blue',n:'Blue Mountain',zone:'Collingwood, Ontario'};   // the resort currently loaded (other resorts come from js/resorts_data.js)
+const isBlue=()=>CUR.id==='blue';
 const DIFF={green:{n:'Easiest',c:'#2fbf5a',w:150},blue:{n:'More difficult',c:'#2f7fff',w:125},black:{n:'Most difficult',c:'#15161a',w:105},
   dbl:{n:'Experts only',c:'#15161a',w:92},glade:{n:'Glades',c:'#15161a',w:120},park:{n:'Terrain park',c:'#ff7a1a',w:200}};
 // [name, difficulty, map points px,py top->bottom, extra]
@@ -66,7 +68,9 @@ const sm01=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
 function trailX(T,z){const P=T.pts;if(z<=P[0][1])return P[0][0];for(let i=0;i<P.length-1;i++){const a=P[i],b=P[i+1];if(z<=b[1]){const t=(z-a[1])/(b[1]-a[1]),s=t*t*(3-2*t)*.35+t*.65;return a[0]+(b[0]-a[0])*s+T.a2*Math.sin(z*T.f2+T.p2);}}return P[P.length-1][0];}
 
 /* ---------- height ---------- */
-function rsSlope(z){if(z<150)return .02;if(z<550)return .02+.34*sm01((z-150)/400);if(z<6200)return .36+.05*Math.sin(z*.0011)+.03*Math.sin(z*.0031+1.3);
+function rsSlope(z){if(!isBlue()){const S=CUR.steep||.4,B=RS.baseZ,t=z/B;if(z<150)return .03;if(z<600)return .03+(S-.03)*sm01((z-150)/450);
+    if(t<.86)return S+.06*Math.sin(z*.0009)+.04*Math.sin(z*.0027+1.3);if(z<B)return .05+(S-.05)*(1-sm01((t-.86)/.14));return .02;}
+  if(z<150)return .02;if(z<550)return .02+.34*sm01((z-150)/400);if(z<6200)return .36+.05*Math.sin(z*.0011)+.03*Math.sin(z*.0031+1.3);
   if(z<7600)return .12+.24*(1-sm01((z-6200)/1400));if(z<RS.baseZ)return .04+.08*(1-sm01((z-7600)/(RS.baseZ-7600)));return .02;}
 function gIdx(x,z){return [Math.max(0,Math.min(map.gnx-1.001,(x+RS.W)/RS.GS)),Math.max(0,Math.min(map.gnz-1.001,(z-RS.ZMIN)/RS.GS))];}
 function resortH(x,z){const M=map,G=M.grid,[fx,fz]=gIdx(x,z),i=fx|0,j=fz|0,tx=fx-i,tz=fz-j,n=M.gnx;
@@ -81,14 +85,18 @@ function featDelta(F,sx,u){const dx=Math.abs(sx),w=1-ssR(F.hw,F.hw+34,dx);if(w<=
   return d*w;}
 
 /* ---------- build ---------- */
-function buildResort(){
-  const r=rng(1212),M={id:'resort',fr:1,ys:[0],feat:[],rails:[],lips:[],trees:[],cliffs:[],pillows:[],stairs:[],decor:[],noise:0,hw:RS.W-300,lim:RS.W-150,
-    len:RS.L,finishZ:Infinity,stopZ:RS.L-500,trails:[],trav:BM_TRAV,F:[],fb:{},signs:[],bldg:[],cliffRocks:[],lifts:[],carpets:[],lift:0,gates:[]};
+function buildResort(rid){
+  rid=rid||'blue';const RD=rid!=='blue'&&window.RESORT_DATA&&RESORT_DATA[rid];
+  if(RD){CUR=RD;RS={W:RD.W,ZMIN:-1800,L:RD.L,GS:40,baseZ:RD.baseZ,liftSpeed:300};}else{CUR={id:'blue',n:'Blue Mountain',zone:'Collingwood, Ontario'};RS=RS_BLUE;}
+  const r=rng(1212),M={id:'resort',rid,fr:1,ys:[0],feat:[],rails:[],lips:[],trees:[],cliffs:[],pillows:[],stairs:[],decor:[],noise:0,hw:RS.W-300,lim:RS.W-150,
+    len:RS.L,finishZ:Infinity,stopZ:RS.L-500,trails:[],trav:RD?[]:BM_TRAV,F:[],fb:{},signs:[],bldg:[],cliffRocks:[],lifts:[],carpets:[],lift:0,gates:[],vill:[]};
   map=M;
-  M.trails=BM_TRAILS.map(([n,d,pts,ex])=>{const T=Object.assign({n,d,pts:pts.map(([px,py])=>[MX(px),MZ(py)]),a2:12+r()*16,f2:.0016+r()*.0008,p2:r()*6.28},ex||{});
-    T.w=DIFF[d].w*(.9+r()*.2);T.zs=T.pts[0][1];T.ze=T.pts[T.pts.length-1][1];T.glade=d==='glade';
-    if(T.skix){T.a2=240;T.f2=.0034;T.p2=0;T.w=150;}   // ski cross snakes down the hill in big S-turns
-    return T;});
+  const src=RD?RD.trails.map(([n,d,pts,ex])=>[n,d,pts,ex]):BM_TRAILS.map(([n,d,pts,ex])=>[n,d,pts.map(([px,py])=>[MX(px),MZ(py)]),ex]);
+  // runs are cut wide (room for proper turns); real resorts keep their mapped centre lines
+  M.trails=src.map(([n,d,pts,ex])=>{const T=Object.assign({n,d,pts:pts.slice(),a2:(RD?6:12)+r()*(RD?8:16),f2:.0016+r()*.0008,p2:r()*6.28},ex||{});
+    T.w=DIFF[d].w*(.9+r()*.2)*1.45;T.zs=T.pts[0][1];T.ze=T.pts[T.pts.length-1][1];T.glade=d==='glade';
+    if(T.skix){T.a2=RD?160:190;T.f2=RD?.0024:.0026;T.p2=0;T.w=RD?220:240;}   // ski cross: wide open course in big S-turns
+    return T;}).filter(T=>T.ze-T.zs>200);
   // grid: escarpment profile, gentle undulation, groomed runs, rough glades and forest floor
   const gs=RS.GS,nx=M.gnx=Math.round(2*RS.W/gs)+1,nz=M.gnz=Math.round((RS.L-RS.ZMIN)/gs)+1,G=M.grid=new Float32Array(nx*nz),GR=M.groom=new Float32Array(nx*nz),GL=M.glade=new Uint8Array(nx*nz);
   const Y=new Float32Array(nz);for(let j=1;j<nz;j++)Y[j]=Y[j-1]+rsSlope(RS.ZMIN+(j-.5)*gs)*gs;
@@ -100,10 +108,10 @@ function buildResort(){
       const ax=Math.abs(x)/RS.W;
       let h=-Y[j]+900*Math.pow(ax,6)+Math.max(0,(Math.abs(x)-(RS.W-500))/300)**2*900;
       h+=m*(60*Math.sin(x*.0021+z*.0004+1)*Math.sin(z*.0009)+30*Math.sin(x*.0047-z*.0013));
-      h+=m*(1-g)*(1+gl*.6)*(16*Math.sin(x*.023+z*.007)*Math.sin(z*.019-x*.004)+9*Math.sin(x*.051)*Math.sin(z*.043+1)+6*Math.sin(x*.11+z*.09));
+      h+=m*(1-g)*(.3+gl*.25)*(16*Math.sin(   /* gentle off-piste rolls only: no mogul-like bumps anywhere */x*.023+z*.007)*Math.sin(z*.019-x*.004)+9*Math.sin(x*.051)*Math.sin(z*.043+1)+6*Math.sin(x*.11+z*.09));
       G[j*nx+i]=h;GR[j*nx+i]=g;GL[j*nx+i]=gl>.3?1:0;}}
   // village: flatten the Mill Pond basin and smooth the square so buildings and ice sit level
-  {const px=VX(96),pz=VZ(306),rx=52*5.2,rz=70*5.2;let lo=1e9;for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){const x=-RS.W+i*gs,z=RS.ZMIN+j*gs,e=((x-px)/rx)**2+((z-pz)/rz)**2;if(e<1)lo=Math.min(lo,G[j*nx+i]);}
+  if(!RD){const px=VX(96),pz=VZ(306),rx=52*5.2,rz=70*5.2;let lo=1e9;for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){const x=-RS.W+i*gs,z=RS.ZMIN+j*gs,e=((x-px)/rx)**2+((z-pz)/rz)**2;if(e<1)lo=Math.min(lo,G[j*nx+i]);}
     M.pondY=lo-6;for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){const x=-RS.W+i*gs,z=RS.ZMIN+j*gs,e=((x-px)/rx)**2+((z-pz)/rz)**2;if(e<1.6){const t=ssR(1,1.6,e),k=j*nx+i;G[k]=M.pondY+(G[k]-M.pondY)*t;}}}
   const at=(A_,x,z)=>{const gi=Math.max(0,Math.min(nx-1,Math.round((x+RS.W)/gs))),gj=Math.max(0,Math.min(nz-1,Math.round((z-RS.ZMIN)/gs)));return A_[gj*nx+gi];};
   // terrain parks (Badlands: M/L/XL, Grove: S/M) and the L-Hill ski-cross course
@@ -122,7 +130,7 @@ function buildResort(){
       const ph=z=>z*T.f2+T.p2,curv=z=>-Math.sin(ph(z));   // sign of x'' along the course
       while(z<T.ze-560){const s=Math.sin(ph(z+260));
         if(Math.abs(s)>.82){const side=-Math.sign(curv(z+260));M.F.push({t:'berm',cx:trailX(T,z+260),z0:z,zA:z,zB:z+560,len:560,H:52,hw:T.w*.95,side,trail:T.n});z+=640;continue;}
-        const f=['rollers','kick','whoops','step','rollers','kick2'][k++%6],cx=trailX(T,z);
+        const f=['rollers','kick','step','kick2'][k++%4],cx=trailX(T,z);   // no whoops: smooth rollers, step-downs and jumps only
         if(f==='rollers'){for(let q=0;q<3;q++){M.F.push({t:'roller',cx:trailX(T,z),z0:z,zA:z,zB:z+150,len:150,H:14,hw:T.w*.92,trail:T.n});z+=160;}z+=90;}
         else if(f==='whoops'){for(let q=0;q<6;q++){M.F.push({t:'roller',cx:trailX(T,z),z0:z,zA:z,zB:z+70,len:70,H:6,hw:T.w*.92,trail:T.n});z+=72;}z+=90;}
         else if(f==='step'){M.F.push({t:'roller',cx,z0:z,zA:z,zB:z+260,len:260,H:24,hw:T.w*.92,trail:T.n});z+=360;}   // big step-down roller
@@ -133,16 +141,18 @@ function buildResort(){
   // buildings (box colliders), named
   const SZ={lodge:[300,165,520],chalet:[115,140,270],hut:[105,90,190],lift_station:[150,125,300]};
   const B=(name,x,z,rot,label)=>{const s=SZ[name];M.bldg.push({name,x,z,rot,hx:s[0],hz:s[1],h:s[2],label});};
-  BM_BUILDINGS.forEach(([k,label,px,py,rot])=>B(k,MX(px),MZ(py),rot,label));
+  if(RD){// base area: the resort's real lodges beside the bottom stations of its lifts
+    RD.lifts.slice().sort((a,b)=>b.base-a.base).forEach((L,i)=>{const nm=RD.lodges[i];if(!nm)return;B(i%2?'chalet':'lodge',L.x+(i%2?-420:420),L.base+260,0,nm);});}
+  else BM_BUILDINGS.forEach(([k,label,px,py,rot])=>B(k,MX(px),MZ(py),rot,label));
   // the village: one entry per building wing (world-space rectangles), plus the Mill Pond and the square
-  M.vill=[];BM_VILLAGE.forEach(([code,name,col,st,rects,rot,shops],bi)=>{let si=0;rects.forEach(([px,py,wp,dp],ri)=>{const w=wp*5.2,d=dp*5.2,take=rects.length===1?shops.length:ri===0?Math.ceil(shops.length*.6):shops.length-si;
+  if(!RD)BM_VILLAGE.forEach(([code,name,col,st,rects,rot,shops],bi)=>{let si=0;rects.forEach(([px,py,wp,dp],ri)=>{const w=wp*5.2,d=dp*5.2,take=rects.length===1?shops.length:ri===0?Math.ceil(shops.length*.6):shops.length-si;
     const V={code,name,col,st:ri?st-1:st,x:VX(px),z:VZ(py),hx:w/2,hz:d/2,rot,shops:shops.slice(si,si+take),main:!ri};si+=take;M.vill.push(V);});});
-  M.pond={x:VX(96),z:VZ(306),rx:52*5.2,rz:70*5.2};M.square={x:VX(232),z:VZ(292)};
+  if(!RD){M.pond={x:VX(96),z:VZ(306),rx:52*5.2,rz:70*5.2};M.square={x:VX(232),z:VZ(292)};}
   // lifts (straight lines down the fall line, stations at both ends) and magic carpets
-  BM_LIFTS.forEach((Ld,li)=>{const x=MX(Ld.px),top=MZ(Ld.t),base=MZ(Ld.b),len=base-150-(top+150),n=Math.max(2,Math.ceil(len/800)),TW=[];
-    for(let k=0;k<=n;k++)TW.push({x,y:0,z:top+150+len*k/n});M.lifts.push({i:li,n:Ld.n,num:Ld.num,x,top,base,TW,step:len/n,six:/Express/.test(Ld.n)});
+  (RD?RD.lifts.map(L=>({n:L.n,num:L.num,wx:L.x,wt:L.top,wb:L.base,six:L.six})):BM_LIFTS).forEach((Ld,li)=>{const x=Ld.wx!==undefined?Ld.wx:MX(Ld.px),top=Ld.wt!==undefined?Ld.wt:MZ(Ld.t),base=Ld.wb!==undefined?Ld.wb:MZ(Ld.b),len=base-150-(top+150),n=Math.max(2,Math.ceil(len/800)),TW=[];
+    for(let k=0;k<=n;k++)TW.push({x,y:0,z:top+150+len*k/n});M.lifts.push({i:li,n:Ld.n,num:Ld.num,x,top,base,TW,step:len/n,six:Ld.six!==undefined?Ld.six:/Express/.test(Ld.n)});
     B('lift_station',x,top-60,0);B('lift_station',x,base+60,Math.PI);});
-  BM_CARPETS.forEach(c=>M.carpets.push({n:c.n,x:MX(c.px),z1:MZ(c.t),z2:MZ(c.b)}));
+  if(!RD)BM_CARPETS.forEach(c=>M.carpets.push({n:c.n,x:MX(c.px),z1:MZ(c.t),z2:MZ(c.b)}));
   // signs: run name + difficulty at the top of every run, mid-run on long ones; glade, slow-zone and ski-cross signs
   M.trails.forEach(T=>{const side=(T.pts[0][0]>0?-1:1),off=T.skix?T.w+70:T.w*.62+30;for(let z=T.zs+90;z<T.ze-400;z+=4200){const x=trailX(T,z)+side*off;M.signs.push({x,z,T});}
     if(T.glade||T.d==='dbl')M.signs.push({x:trailX(T,T.zs+150)-side*(T.w*.62+30),z:T.zs+150,danger:'glades'});
@@ -152,12 +162,14 @@ function buildResort(){
   // trees: dense forest between runs, thinned glades, open summit farmland and village
   for(let z=RS.ZMIN+60;z<RS.L-80;z+=88)for(let x=-RS.W+60;x<RS.W-60;x+=88){const tx=x+(r()-.5)*70,tz=z+(r()-.5)*70;
     if(at(GR,tx,tz)>.01||at(GR,tx+70,tz)>.3||at(GR,tx-70,tz)>.3)continue;const glade=at(GL,tx,tz);   // clear tree-free edge along every run
-    const p=tz<120?.04:tz>RS.baseZ-150?.05:glade?.18:.5;
+    const p=tz<120?.03:tz>RS.baseZ-150?.04:glade?.11:.3;   // thinner forest overall
     if(M.lifts.some(L=>Math.abs(tx-L.x)<180&&tz>L.top-200&&tz<L.base+200))continue;
-    if(M.lifts.some(L=>tx>L.x-260&&tx<L.x+560&&tz>L.top-260&&tz<L.top+620))continue;   // open unload bay at every lift topif(M.carpets.some(c=>Math.abs(tx-c.x)<90&&tz>c.z1-60&&tz<c.z2+60))continue;
+    if(M.lifts.some(L=>tx>L.x-260&&tx<L.x+560&&tz>L.top-260&&tz<L.top+620))continue;   // open unload bay at every lift top
+    if(M.carpets.some(c=>Math.abs(tx-c.x)<90&&tz>c.z1-60&&tz<c.z2+60))continue;
     if(M.bldg.some(b=>Math.abs(tx-b.x)<b.hx+90&&Math.abs(tz-b.z)<b.hz+90))continue;
-    if(tx>VX(-10)&&tx<VX(360)&&tz>VZ(100)&&tz<VZ(520))continue;   // no trees inside the village
-    if(M.gates.some(g=>Math.abs(tx-g.x)<320&&tz>g.z-420&&tz<g.z+200))continue;   // open area round the ski-cross startif(M.signs.some(s=>Math.hypot(s.x-tx,s.z-tz)<60))continue;
+    if(!RD&&tx>VX(-10)&&tx<VX(360)&&tz>VZ(100)&&tz<VZ(520))continue;   // no trees inside the village
+    if(M.gates.some(g=>Math.abs(tx-g.x)<320&&tz>g.z-420&&tz<g.z+200))continue;   // open area round the ski-cross start
+    if(M.signs.some(s=>Math.hypot(s.x-tx,s.z-tz)<60))continue;
     if(r()<p)M.trees.push({x:tx,z:tz,s:.8+r()*.9});}
   M.buckets={};
   M.trees.forEach(t=>{t.y=resortH(t.x,t.z);t.rad=5*t.s+3;t.h=70*t.s;addCol(M,t);});
@@ -186,7 +198,9 @@ function instChunks(names,list,fn,matsFor,size){const chunks={},d=new U.Object3D
     (runG.userData.lod=runG.userData.lod||[]).push(C);}
   return out;}
 function updateLod(){const L=runG&&runG.userData.lod;if(!L)return;const x=cam.position.x,z=cam.position.z;
-  for(const C of L){const d=Math.hypot(C.cx-x,C.cz-z),hq=d<1500;C.lv[0].forEach(m=>m.visible=hq);if(C.lv[1])C.lv[1].forEach(m=>m.visible=!hq&&d<17000);}}
+  for(const C of L){const d=Math.hypot(C.cx-x,C.cz-z),hq=d<1500;C.lv[0].forEach(m=>m.visible=hq);if(C.lv[1])C.lv[1].forEach(m=>m.visible=!hq&&d<14500);}   // past the fog end (14000) trees were drawn as solid fog colour
+  // distance culling for detail groups (village, map boards): hidden when far away, where the fog hides them anyway
+  const far=runG.userData.far;if(far)for(const g of far){g.visible=Math.hypot(g.userData.cx-x,g.userData.cz-z)<g.userData.r;}}
 function diffIcon(g,d,sx,sy,sc){sc=sc||1;g.fillStyle=DIFF[d].c;
   if(d==='green'){g.beginPath();g.arc(sx,sy,46*sc,0,7);g.fill();}
   else if(d==='blue')g.fillRect(sx-44*sc,sy-44*sc,88*sc,88*sc);
@@ -202,7 +216,7 @@ function dangerTex(kind){if(DANGER_TEX[kind])return DANGER_TEX[kind];const c=doc
   g.fillStyle=kind==='skix'?'#ff7a1a':'#ffd21f';g.save();g.translate(256,256);g.rotate(Math.PI/4);g.fillRect(-172,-172,344,344);g.lineWidth=16;g.strokeStyle='#141416';g.strokeRect(-160,-160,320,320);g.restore();
   g.fillStyle='#141416';g.textAlign='center';g.textBaseline='middle';g.font='56px Bungee,Impact,sans-serif';
   if(kind==='slow'){g.fillText('SLOW',256,226);g.fillText('ZONE',256,284);}
-  else if(kind==='skix'){g.fillText('SKI',256,214);g.fillText('CROSS',256,272);g.font='bold 26px Inter,sans-serif';g.fillText('L-HILL COURSE',256,326);}
+  else if(kind==='skix'){g.fillText('SKI',256,214);g.fillText('CROSS',256,272);g.font='bold 26px Inter,sans-serif';g.fillText('RACE COURSE',256,326);}
   else{g.fillText('GLADES',256,226);g.font='bold 28px Inter,sans-serif';g.fillText('EXPERTS ONLY',256,282);}
   return DANGER_TEX[kind]=new U.CanvasTexture(c);}
 function labelTex(text){const c=document.createElement('canvas');c.width=1024;c.height=128;const g=c.getContext('2d');g.fillStyle='#14182e';g.fillRect(0,0,1024,128);g.strokeStyle='#ffd23f';g.lineWidth=6;g.strokeRect(6,6,1012,116);
@@ -222,6 +236,7 @@ const COBBLE=()=>canv(256,256,(g,w,h)=>{g.fillStyle='#7d7873';g.fillRect(0,0,w,h
 function shopSign(name){const sc=SHOPCOL[name]||['#f4efe4','#2a2420'];return canv(512,112,(g,w,h)=>{g.fillStyle=sc[0];g.fillRect(0,0,w,h);g.strokeStyle='rgba(255,255,255,.5)';g.lineWidth=5;g.strokeRect(6,6,w-12,h-12);
   g.fillStyle=sc[1];let fs=54;g.font='bold '+fs+'px Georgia,serif';while(g.measureText(name).width>w-40&&fs>18){fs-=2;g.font='bold '+fs+'px Georgia,serif';}g.textAlign='center';g.textBaseline='middle';g.fillText(name,w/2,h/2+2);});}
 function buildVillage(M,add,std,tm){const VG=new U.Group();runG.add(VG);const SH=62;
+  VG.userData.cx=M.square.x;VG.userData.cz=M.square.z;VG.userData.r=9000;(runG.userData.far=runG.userData.far||[]).push(VG);   // ~400 meshes: skip them when far up the mountain
   const snowM=std(0xf3f6fb,{roughness:.9}),trimM=std(0xf2efe8,{roughness:.6}),stoneM=std(0x86837d,{roughness:.95}),glassM=new U.MeshStandardMaterial({color:0x2a3340,emissive:0xffc77a,emissiveIntensity:.55,roughness:.1,metalness:.2}),
     doorM=std(0x3a2a1e,{roughness:.6}),fasciaM=std(0x2b2f36,{roughness:.7});
   const mesh=(geo,mat,par)=>{const m=new U.Mesh(geo,mat);m.castShadow=m.receiveShadow=true;(par||VG).add(m);return m;};
@@ -291,7 +306,7 @@ function buildResortGfx(M,C,add,std,tm){
       let cr=1,cg=1,cb=1;if(lip&&z>=lip.z1&&z<=lip.z2&&Math.abs(x-F.cx)<=F.hw){cr=lc.r*.8+.2;cg=lc.g*.8+.2;cb=lc.b*.8+.2;}Cc[k*3]=cr;Cc[k*3+1]=cg;Cc[k*3+2]=cb;UV[k*2]=x/64;UV[k*2+1]=z/64;}
     let n=0;for(let j=0;j<pnz-1;j++)for(let i=0;i<pnx-1;i++){const a=j*pnx+i,b=a+1,c=a+pnx,d=c+1;I[n++]=a;I[n++]=c;I[n++]=b;I[n++]=b;I[n++]=c;I[n++]=d;}
     const g=new U.BufferGeometry();g.setAttribute('position',new U.BufferAttribute(P,3));g.setAttribute('color',new U.BufferAttribute(Cc,3));g.setAttribute('uv',new U.BufferAttribute(UV,2));g.setIndex(new U.BufferAttribute(I,1));g.computeVertexNormals();
-    const me=new U.Mesh(g,pm);me.receiveShadow=true;me.castShadow=true;runG.add(me);});
+    const me=new U.Mesh(g,pm);me.receiveShadow=true;me.castShadow=false;runG.add(me);});   // patches sit on the terrain: no need to render them into the shadow map
   // trees with LOD
   const tmB=Object.assign({},tm,{needles:envMat('needles',C.tree[1],{roughness:.85})});
   const tf=(d,t)=>{d.position.set(t.x,t.y-6,t.z);d.scale.setScalar(t.s*.62);d.rotation.set(0,t.x*.37+t.z*.11,Math.sin(t.x*.13+t.z)*.03);};
@@ -302,12 +317,12 @@ function buildResortGfx(M,C,add,std,tm){
     paint:std(0x3b4556,{roughness:.55,metalness:.4,vertexColors:true}),dark:std(0x15161a,{roughness:.6,vertexColors:true})};
   M.bldg.forEach(b=>{if(!A[b.name])return;const o=part(b.name);o.traverse(m=>{if(m.isMesh){m.material=bm[mname(m.material)]||tm.snow;m.castShadow=m.receiveShadow=true;}});o.position.set(b.x,b.y,b.z);o.rotation.y=b.rot;runG.add(o);
     if(b.label){const h=b.name==='lodge'?260:b.name==='chalet'?170:150,bd=add(new U.PlaneGeometry(b.label.length>14?300:220,34),new U.MeshBasicMaterial({map:labelTex(b.label),side:U.DoubleSide}),b.x,b.y+h,b.z-b.hz-12);bd.rotation.y=Math.PI;}});
-  buildVillage(M,add,std,tm);
+  if(M.vill.length)buildVillage(M,add,std,tm);
   // trail map board in the unload bay at the top of every lift (you step off facing it)
   {const wood=std(0x4a3020,{roughness:.85}),roofM=std(0xf3f6fb,{roughness:.9});
     M.lifts.forEach(L=>{const s=boardSpot(L),y=resortH(s.x,s.z),cv=document.createElement('canvas');drawTrailMap(cv,{x:L.x+150,z:L.top+170},900);
       const tx=new U.CanvasTexture(cv);tx.anisotropy=8;const bw=230,bh=bw*cv.height/cv.width,ry=Math.atan2(-180,-120);
-      const g=new U.Group();g.position.set(s.x,y,s.z);g.rotation.y=ry;runG.add(g);
+      const g=new U.Group();g.position.set(s.x,y,s.z);g.rotation.y=ry;runG.add(g);g.userData.cx=s.x;g.userData.cz=s.z;g.userData.r=5000;runG.userData.far=(runG.userData.far||[]).concat(g);
       [-1,1].forEach(k=>{const po=new U.Mesh(new U.BoxGeometry(8,bh+70,8),wood);po.position.set(k*(bw/2+6),(bh+70)/2,0);po.castShadow=true;g.add(po);});
       const fr=new U.Mesh(new U.BoxGeometry(bw+16,bh+16,5),wood);fr.position.set(0,60+bh/2,-2);fr.castShadow=true;g.add(fr);
       const pn=new U.Mesh(new U.PlaneGeometry(bw,bh),new U.MeshStandardMaterial({map:tx,roughness:.7}));pn.position.set(0,60+bh/2,.8);g.add(pn);
@@ -337,7 +352,7 @@ function buildResortGfx(M,C,add,std,tm){
     const bars=[];for(let k=0;k<5;k++){const lx=gt.x-DW/2+k*DW/4;add(new U.BoxGeometry(2.5,26,36),orange,lx,y+27,gt.z-18);}
     for(let k=0;k<4;k++){const lx=gt.x-DW/2+(k+.5)*DW/4,piv=new U.Group();piv.position.set(lx,y+2,gt.z+2);runG.add(piv);const b=new U.Mesh(new U.BoxGeometry(DW/4-6,3,3),std(0xf3f5f8,{roughness:.4}));b.position.y=14;b.castShadow=true;piv.add(b);bars.push(piv);}
     runG.userData.gateBars=bars;
-    const bd=add(new U.PlaneGeometry(DW+20,24),new U.MeshBasicMaterial({map:labelTex('L-Hill Ski Cross'),side:U.DoubleSide}),gt.x,y+92,gt.z);bd.rotation.y=Math.PI;
+    const bd=add(new U.PlaneGeometry(DW+20,24),new U.MeshBasicMaterial({map:labelTex(T.n+' Ski Cross'),side:U.DoubleSide}),gt.x,y+92,gt.z);bd.rotation.y=Math.PI;
     // finish arch at the bottom
     {const fz=T.finZ,fx=trailX(T,fz),fy=resortH(fx,fz);[-1,1].forEach(s=>add(new U.BoxGeometry(10,110,10),dark,fx+s*(T.w+10),fy+55,fz));
       const fb=add(new U.PlaneGeometry(T.w*2+20,30),new U.MeshBasicMaterial({map:labelTex('Finish'),side:U.DoubleSide}),fx,fy+104,fz);fb.rotation.y=Math.PI;
@@ -353,7 +368,7 @@ function buildResortGfx(M,C,add,std,tm){
     [[0,-14000,10,4.5,9,0],[-19000,4000,7,4,7,Math.PI/2],[19000,4000,7,4,7,-Math.PI/2]].forEach(([x,z,sx,sy,sz,ry])=>{const g=part('range');g.traverse(o=>{if(o.isMesh){o.material=pk;o.castShadow=false;}});g.position.set(x,-900-sy*80,z);g.scale.set(sx,sy,sz);g.rotation.y=ry;runG.add(g);});}
   // Georgian Bay beyond the village (flat frozen water)
   {const bay=add(new U.PlaneGeometry(60000,30000),new U.MeshStandardMaterial({color:0xa9c4dd,roughness:.15,metalness:.1}),0,resortH(0,RS.L-200)-40,RS.L+15000);bay.rotation.x=-Math.PI/2;bay.castShadow=false;}
-  const bc=document.createElement('canvas');bc.width=1024;bc.height=160;const g=bc.getContext('2d');g.fillStyle='#14182e';g.fillRect(0,0,1024,160);g.fillStyle='#ffd23f';g.font='78px Bungee,Impact,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('BLUE MOUNTAIN',512,84);
+  const bc=document.createElement('canvas');bc.width=1024;bc.height=160;const g=bc.getContext('2d');g.fillStyle='#14182e';g.fillRect(0,0,1024,160);g.fillStyle='#ffd23f';g.font='78px Bungee,Impact,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(CUR.n.toUpperCase(),512,84);
   const bx=MX(812),bz=MZ(500),by=resortH(bx,bz);[-1,1].forEach(sd=>add(new U.CylinderGeometry(4,4,220,8),std(0x2a2e3a),bx+300+sd*200,by+110,bz));
   add(new U.PlaneGeometry(380,60),new U.MeshBasicMaterial({map:new U.CanvasTexture(bc),side:U.DoubleSide}),bx+300,by+200,bz).rotation.y=Math.PI;}
 
@@ -384,20 +399,21 @@ function myChair(){if(runG.userData.myChair)return runG.userData.myChair;const o
 
 /* ---------- lift ride & free-roam helpers ---------- */
 function nearLift(r){if(!map.fr||r.mode!=='ground')return null;let best=null,bd=1e9;for(const L of map.lifts){const d=Math.hypot(r.x-L.x,(r.z-(L.base+60))*.7);if(d<650&&d<bd){bd=d;best=L;}}return best;}
-function boardLift(r,L){L=L||nearLift(r);if(!L)return;r.lift=L;r.cz=L.TW[L.TW.length-1].z;myChair();
+function boardLift(r,L){L=L||nearLift(r);if(!L)return;clearDebris(r);r.sk.gear(true);r.crashT=0;r.lift=L;r.cz=L.TW[L.TW.length-1].z;myChair();
   Object.assign(r,{mode:'lift',vx:0,vz:0,vy:0,head:Math.PI,spin:0,yo:0,ry:0,sw:false,pitch:0,roll:0,steer:0,charge:0,rail:null,grab:null,bsp:0,hsk:0});liftPlace(r);
   if(r===p){toast('On the <b>'+L.n+'</b> · hold <b>W</b> to speed up · <b>T</b> skip to the top');sfx('ui');}}
 function liftPlace(r){const L=r.lift;r.x=L.x+88;r.z=r.cz-22;r.y=cableY(L,r.cz)-107.5-18.5;}
-function topOf(L){return L||map.lifts.find(l=>l.num===6)||map.lifts[0];}
+function topOf(L){return L||(isBlue()&&map.lifts.find(l=>l.num===6))||map.lifts.slice().sort((a,b)=>(b.base-b.top)-(a.base-a.top))[0];}
 // top of a lift: you step off into the unload bay (cleared of trees) facing the trail-map board, standing still; turn and go
-function arriveTop(r,L){L=topOf(L||r.lift);r.lift=null;Object.assign(r,{mode:'ground',x:L.x+150,z:L.top+170,vx:0,vz:0,vy:0,vyG:0,head:.9,sw:false,spin:0,yo:0,ry:0,pitch:0,crashT:0,rail:null,_tr:null,bsp:0,hsk:0});r.y=hAt(r.x,r.z);r.safeT=3;
+function arriveTop(r,L){L=topOf(L||r.lift);if(r.mode==='tow'&&SLED){SLED.ph='leave';SLED.t=0;}clearDebris(r);r.sk.gear(true);r.lift=null;Object.assign(r,{mode:'ground',x:L.x+150,z:L.top+170,vx:0,vz:0,vy:0,vyG:0,head:.9,sw:false,spin:0,yo:0,ry:0,pitch:0,crashT:0,rail:null,_tr:null,bsp:0,hsk:0});r.y=hAt(r.x,r.z);r.safeT=3;
   if(r===p){camD={x:Math.sin(.9),z:Math.cos(.9)};cam.position.set(r.x-Math.sin(.9)*160,r.y+80,r.z-Math.cos(.9)*160);toast('Top of the <b>'+L.n+'</b> · check the trail map board · <b>M</b> full map · <b>Y</b> snowmobile');}}
 function boardSpot(L){return {x:L.x+330,z:L.top+290};}
 function liftStep(r,dt){const I=r.inp,sp=RS.liftSpeed*(r.lift.six?1:.7)*(I.w?3.5:1);r.cz-=sp*dt;liftPlace(r);r.vz=-sp;r.comp=0;
   if(r.cz<=r.lift.TW[0].z+40)arriveTop(r,r.lift);}
 function trailAt(x,z){let best=null,bd=1e9;for(const T of map.trails){if(z<T.zs-80||z>T.ze+80)continue;const d=Math.abs(x-trailX(T,z));if(d<T.w+40&&d<bd){bd=d;best=T;}}
   if(!best)for(const t of map.trav)if(x>t.x1&&x<t.x2&&Math.abs(z-t.z)<t.w+30)return {n:t.n,d:t.d};return best;}
-function r_reset(r){r.lift=null;Object.assign(r,{mode:'ground',vx:0,vy:0,vyG:0,head:0,sw:false,spin:0,yo:0,ry:0,pitch:0,crashT:0,rail:null,_tr:null,bsp:0,hsk:0});}
+// clean ground state (spawn / T / map click / lift top): also ends any snowmobile tow and puts scattered skis back on after a bail
+function r_reset(r){if(r.mode==='tow'&&typeof SLED!=='undefined'&&SLED){SLED.ph='leave';SLED.t=0;}if(r.crashT>0||r.sk){clearDebris(r);r.sk.gear(true);}r.charge=0;r.butter=null;r.butT=0;r.lift=null;Object.assign(r,{mode:'ground',vx:0,vy:0,vyG:0,head:0,sw:false,spin:0,yo:0,ry:0,pitch:0,crashT:0,rail:null,_tr:null,bsp:0,hsk:0});}
 function spawnAt(x,z,label,keep){x=Math.max(-RS.W+400,Math.min(RS.W-400,x));z=Math.max(RS.ZMIN+300,Math.min(RS.L-600,z));
   // clicked in the woods? snap onto the nearest run so you never spawn stuck in the trees
   if(!trailAt(x,z)){let bx=x,bd=1e9,bT=null;for(const T of map.trails){if(T.glade||z<T.zs||z>T.ze)continue;const c=trailX(T,z),d=Math.abs(c-x);if(d<bd){bd=d;bx=c;bT=T;}}if(bT&&bd<2500){x=bx;label=label||bT.n;}}
@@ -406,10 +422,11 @@ function spawnAt(x,z,label,keep){x=Math.max(-RS.W+400,Math.min(RS.W-400,x));z=Ma
   camD={x:0,z:1};cam.position.set(x,p.y+90,z-170);closeTrailMap();toast(label?'Dropping into <b>'+label+'</b>':'Spawned');}
 function teleportTrail(T){spawnAt(trailX(T,T.zs+150),T.zs+150,T.n);}
 let tmapOpen=false;
-function liftFor(T){let b=null,bd=1e9;for(const L of map.lifts){if(!L.six)continue;const d=Math.abs(T.pts[0][0]-L.x);if(d<bd){bd=d;b=L;}}return b;}
-function openTrailMap(){if(!map||!map.fr)return;tmapOpen=true;paused=true;for(const k in keys)keys[k]=0;$('tmap').classList.remove('hide');drawTrailMap();
+// resorts with no express lifts (Nakiska) group runs by any lift
+function liftFor(T){let b=null,bd=1e9;const anySix=map.lifts.some(L=>L.six);for(const L of map.lifts){if(anySix&&!L.six)continue;const d=Math.abs(T.pts[0][0]-L.x);if(d<bd){bd=d;b=L;}}return b;}
+function openTrailMap(){if(!map||!map.fr)return;tmapOpen=true;if($('tmTitle'))$('tmTitle').textContent='Trail Map · '+CUR.n;paused=true;for(const k in keys)keys[k]=0;$('tmap').classList.remove('hide');drawTrailMap();
   const ic=d=>d==='green'?'<b style="color:#2fbf5a">●</b>':d==='blue'?'<b style="color:#5a9cff">■</b>':d==='black'?'◆':d==='park'?'<b style="color:#ff7a1a">▬</b>':'◆◆';
-  $('tmList').innerHTML=map.lifts.filter(L=>L.six).map(L=>'<div class="lbl" style="color:#ffd23f">'+L.num+' · '+L.n+'</div>'+
+  $('tmList').innerHTML=map.lifts.filter(L=>L.six||!map.lifts.some(l=>l.six)).map(L=>'<div class="lbl" style="color:#ffd23f">'+L.num+' · '+L.n+'</div>'+
     map.trails.map((T,i)=>[T,i]).filter(([T])=>liftFor(T)===L).map(([T,i])=>{const k=map.F.filter(F=>F.trail===T.n&&F.t==='kick').length,rl=map.rails.filter(R=>R.trail===T.n).length;
       return '<button data-i="'+i+'"><b>'+ic(T.d)+' '+T.n+'</b><span>'+(T.skix?'Ski cross · ':'')+(T.glade?'Glades · ':'')+DIFF[T.d].n+(k?' · '+k+' jumps':'')+(rl?' · '+rl+' rails':'')+'</span></button>';}).join('')).join('');
   $('tmList').querySelectorAll('button').forEach(b=>b.onclick=()=>teleportTrail(map.trails[+b.dataset.i]));
@@ -423,8 +440,8 @@ function openTrailMap(){if(!map||!map.fr)return;tmapOpen=true;paused=true;for(co
 /* ---------- Ski Cross race (L-Hill): 4 riders in the start gate, 3-2-1, bars drop, first across the line wins ---------- */
 let RACE=null;
 function raceSetup(){const T=map.trails.find(t=>t.skix),gz=T.zs+130;RACE={T,t:0,go:false,order:[]};
-  riders.forEach((r,i)=>{const lane=[-1.5,-.5,.5,1.5][i%4]*42;r_reset(r);Object.assign(r,{x:trailX(T,gz)+lane,z:gz-20,vz:0,fin:false,lane,score:0,time:0});r.y=hAt(r.x,r.z);r.safeT=0;});
-  (runG.userData.gateBars||[]).forEach(b=>b.rotation.x=0);camD={x:0,z:1};cam.position.set(p.x,p.y+80,p.z-170);toast('<b>Ski Cross</b> · L-Hill · get in the gate…');}
+  riders.forEach((r,i)=>{const lane=[-1.5,-.5,.5,1.5][i%4]*42;r_reset(r);Object.assign(r,{x:trailX(T,gz)+lane,z:gz-20,vz:0,fin:false,ft:0,lane,score:0,time:0});r.y=hAt(r.x,r.z);r.safeT=0;});
+  (runG.userData.gateBars||[]).forEach(b=>b.rotation.x=0);camD={x:0,z:1};cam.position.set(p.x,p.y+80,p.z-170);toast('<b>Ski Cross</b> · '+CUR.n+' · '+T.n+' · get in the gate…');}
 function raceStep(dt){if(!RACE||curMode!=='skix')return;RACE.t+=dt;const T=RACE.t-3;
   if(!RACE.go){const n=Math.ceil(3-RACE.t);$('timer').textContent=n>0?String(n):'GO!';if(RACE._n!==n){RACE._n=n;sfx(n>0?'ui':'trick',.8);}if(RACE.t>=3){RACE.go=true;sfx('trick',1);}}
   else $('timer').textContent=fmt(Math.max(0,T));
@@ -434,7 +451,9 @@ function raceRank(){const fin=RACE?RACE.order.slice():[];return fin.concat(rider
 // bots: follow the course line in their own lane, tuck on the straights, carve the berms
 function skixAI(r){const I=r.inp;if(!RACE||!RACE.go||r.mode!=='ground'||r.fin)return;const T=RACE.T,look=230+Math.min(200,Math.hypot(r.vx,r.vz)*.25);
   const tx=trailX(T,r.z+look)+r.lane*.55*(1-Math.min(1,Math.abs(Math.sin((r.z+look)*T.f2+T.p2)))),want=Math.atan2(tx-r.x,look),d=want-r.head;
-  if(d>.03)I.a=1;else if(d<-.03)I.d=1;if(Math.abs(d)<.12&&Math.random()<.85*(r.bot.skill||.8))I.w=1;}
+  if(d>.03)I.a=1;else if(d<-.03)I.d=1;if(Math.abs(d)<.2)I.w=1;   // racers tuck whenever they're on line
+  // light rubber-banding: a bot far behind the leader gets a little less drag, so races stay close
+  const lead=Math.max(...riders.map(o=>o.z));r.rb=lead-r.z>250?.88:1;}
 /* ---------- snowmobile tow (Y): a sled with a driver pulls up, winches you in on a tow rope and drags you uphill ---------- */
 let SLED=null;
 function sledModel(){const g=new U.Group(),m=(c,o)=>new U.MeshStandardMaterial(Object.assign({color:c,roughness:.45,metalness:.1},o||{}));
@@ -489,6 +508,8 @@ function filterTrailMap(){const q=tmQuery.trim().toLowerCase();
 function closeTrailMap(){if($('tmSearch'))$('tmSearch').blur();tmapOpen=false;$('tmap').classList.add('hide');paused=false;}
 // painted-style trail map: hill shading, forest canopy, runs by difficulty, lifts, village, title + legend; also used on the boards at each lift top
 function drawTrailMap(c,here,W){c=c||$('tmCv');here=here===undefined?p:here;W=W||900;c.width=W;c.height=Math.round(W*(RS.L-RS.ZMIN)/(2*RS.W));const g=c.getContext('2d'),w=c.width,h=c.height,X=x=>(x+RS.W)/(2*RS.W)*w,Z=z=>(z-RS.ZMIN)/(RS.L-RS.ZMIN)*h,sc=W/900;
+  // base layer (sky gradient, hill shading, forest, village) is expensive: paint it once per map + size, then reuse (search redraws are instant)
+  const bk='_tmb'+W;if(!map[bk]){const bc=document.createElement('canvas');bc.width=w;bc.height=h;(g=>{
   const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#9fb9d6');gr.addColorStop(.07,'#dbe6f1');gr.addColorStop(.5,'#eef3f8');gr.addColorStop(.85,'#f6f8fb');gr.addColorStop(1,'#e8eef4');g.fillStyle=gr;g.fillRect(0,0,w,h);
   // hill shading from the real terrain (light from the upper left)
   const st=Math.max(3,Math.round(6/sc));for(let py=0;py<h;py+=st)for(let px=0;px<w;px+=st){const x=-RS.W+px/w*2*RS.W,z=RS.ZMIN+py/h*(RS.L-RS.ZMIN),e=60,dx=resortH(x+e,z)-resortH(x-e,z),dz=resortH(x,z+e)-resortH(x,z-e),s=(-dx*.7-dz*.25)/(2*e);
@@ -498,6 +519,7 @@ function drawTrailMap(c,here,W){c=c||$('tmCv');here=here===undefined?p:here;W=W|
   // village + pond
   if(map.pond){g.fillStyle='#bcd8ee';g.beginPath();g.ellipse(X(map.pond.x),Z(map.pond.z),map.pond.rx/(2*RS.W)*w,map.pond.rz/(RS.L-RS.ZMIN)*h,0,0,7);g.fill();}
   if(map.vill)for(const V of map.vill){g.save();g.translate(X(V.x),Z(V.z));g.rotate(-V.rot);g.fillStyle='#'+new U.Color(V.col).getHexString();g.fillRect(-V.hx/(2*RS.W)*w,-V.hz/(RS.L-RS.ZMIN)*h,V.hx/RS.W*w,2*V.hz/(RS.L-RS.ZMIN)*h);g.restore();}
+  })(bc.getContext('2d'));map[bk]=bc;}g.drawImage(map[bk],0,0);
   const q=tmQuery.trim().toLowerCase();if(q)for(const T of map.trails){if(!tmMatch(T,q))continue;g.strokeStyle='rgba(255,200,40,.8)';g.lineWidth=12;g.beginPath();
     for(let z=T.zs;z<=T.ze;z+=80){const x=X(trailX(T,z)),y=Z(z);z===T.zs?g.moveTo(x,y):g.lineTo(x,y);}g.stroke();}
   const path=T=>{g.beginPath();for(let z=T.zs;z<=T.ze;z+=60){const x=X(trailX(T,z)),y=Z(z);z===T.zs?g.moveTo(x,y):g.lineTo(x,y);}};
@@ -513,7 +535,8 @@ function drawTrailMap(c,here,W){c=c||$('tmCv');here=here===undefined?p:here;W=W|
     g.lineWidth=3*sc;g.strokeStyle='rgba(255,255,255,.85)';g.strokeText(T.n.toUpperCase(),0,0);g.fillStyle='#0b1024';g.fillText(T.n.toUpperCase(),0,0);g.restore();}
   // title block (own wordmark) + legend
   g.fillStyle='rgba(14,30,62,.92)';g.fillRect(10*sc,10*sc,250*sc,58*sc);g.fillStyle='#fff';g.beginPath();g.moveTo(22*sc,58*sc);g.lineTo(40*sc,24*sc);g.lineTo(52*sc,42*sc);g.lineTo(60*sc,32*sc);g.lineTo(76*sc,58*sc);g.fill();
-  g.font='bold '+(22*sc)+'px Bungee,Impact,sans-serif';g.fillText('BLUE MOUNTAIN',84*sc,40*sc);g.font=(11*sc)+'px Inter';g.fillStyle='#bcd2f0';g.fillText('Trail map · Collingwood, Ontario',84*sc,58*sc);
+  g.font='bold '+(22*sc)+'px Bungee,Impact,sans-serif';{let fs=22;g.font='bold '+(fs*sc)+'px Bungee,Impact,sans-serif';while(g.measureText(CUR.n.toUpperCase()).width>168*sc&&fs>11){fs--;g.font='bold '+(fs*sc)+'px Bungee,Impact,sans-serif';}}
+  g.fillText(CUR.n.toUpperCase(),84*sc,40*sc);g.font=(11*sc)+'px Inter';g.fillStyle='#bcd2f0';g.fillText('Trail map · '+CUR.zone,84*sc,58*sc);
   const lg=[['green','Easiest'],['blue','More difficult'],['black','Most difficult'],['dbl','Experts only'],['park','Terrain park']];g.fillStyle='rgba(255,255,255,.9)';g.fillRect(w-190*sc,10*sc,180*sc,(16+lg.length*20)*sc);
   lg.forEach(([d,n],i)=>{const y=28*sc+i*20*sc;diffIcon(g,d,w-172*sc,y,.16*sc);g.textAlign='left';g.textBaseline='alphabetic';g.fillStyle='#0b1024';g.font='bold '+(12*sc)+'px Inter';g.fillText(n,w-150*sc,y+4*sc);});
   if(here){const hx=X(here.x),hy=Z(here.z);g.fillStyle='#ffd23f';g.strokeStyle='#0b1024';g.lineWidth=2*sc;g.beginPath();g.arc(hx,hy,7*sc,0,7);g.fill();g.stroke();
