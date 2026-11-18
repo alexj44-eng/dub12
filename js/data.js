@@ -49,6 +49,9 @@ function item(o){o.rarity=o.rarity||'common';o.price=o.price===undefined?RAR[o.r
 /* jackets: two puffer styles, coloured by you (body colour + stripe colour) */
 const JCOL=[['Black',0x141416],['Charcoal',0x3a3d44],['Slate',0x5d6673],['White',0xeceef1],['Signal Red',0xd8343b],['Burnt Orange',0xe0622a],['Mustard',0xd9a526],
  ['Lime',0x9fd23a],['Forest',0x2f5e3c],['Teal',0x1f9c90],['Sky',0x4aa3e6],['Navy',0x1d2b55],['Purple',0x6d4ab8],['Pink',0xe87aa8],['Sand',0xc9b18a],['Olive',0x5f6640]];
+// pole colours: [name, colour, metallic]
+const POLECOL=[['Silver',0xcfd6e4,1],['Black',0x16171b,0],['White',0xeceef1,0],['Gold',0xd8b04a,1],['Red',0xd8343b,0],['Orange',0xe0622a,0],['Yellow',0xf2c62a,0],['Lime',0x9fd23a,0],
+  ['Teal',0x1f9c90,0],['Sky',0x4aa3e6,0],['Blue',0x2453c9,1],['Purple',0x6d4ab8,0],['Pink',0xe87aa8,0],['Gunmetal',0x4a4f58,1]];
 item({id:'j_puffer',cat:'jacket',n:'Stripe Puffer',c:0x141416,a:0x3a3d44,t:0x141416,rarity:'common',src:'starter',stripe:true});
 item({id:'j_clean',cat:'jacket',n:'Clean Puffer',c:0x141416,a:0x141416,t:0x141416,rarity:'common',src:'starter',stripe:false});
 [
@@ -149,7 +152,10 @@ const MAPS={
 };
 MAPS.resort={n:'Blue Mountain',zone:'Free Roam',d:'Blue Mountain, Ontario: all 43 runs from the trail map, the glades, Badlands and Grove terrain parks, an L-Hill ski-cross course, the five high-speed six-person express lifts plus the Voyageur Quad and Graduate Triple, and the base village. Ride the lifts or click the map to spawn anywhere.',diff:'Open world',lvl:1,pin:[0,.25],fr:1,
   sky:'linear-gradient(#2a64c8 0%,#86b8f0 55%,#e9f3ff 100%)',fog:0xd8e8fa,hemi:[0xffffff,0x7f9fd8,.64],sun:[0xfff2dc,.52,[.45,.62,.45]],tex:'pow',tree:[0x1d4a35,0x2a6a4a],rng:0xffffff};
-const MODES={battle:{n:'Trick Battle',i:'⚔️',d:'You vs 3 riders. Top score wins.'},free:{n:'Freeride',i:'🎿',d:'Solo run for a high score.'},time:{n:'Time Trial',i:'⏱️',d:'Fastest to the finish line.'}};
+MAPS.skicross={n:'Ski Cross',zone:'Blue Mountain · L-Hill',d:'Four riders, one start gate. Race the full-length L-Hill ski-cross course: banked berms, rollers, whoops, step-downs and jumps, top to bottom. First across the line wins.',diff:'Race',lvl:1,pin:[-.3,.25],fr:1,sx:1,
+  sky:MAPS.resort.sky,fog:MAPS.resort.fog,hemi:MAPS.resort.hemi,sun:MAPS.resort.sun,tex:'pow',tree:MAPS.resort.tree,rng:0xffffff};
+const MODES={battle:{n:'Trick Battle',i:'⚔️',d:'You vs 3 riders. Top score wins.'},free:{n:'Freeride',i:'🎿',d:'Solo run for a high score.'},time:{n:'Time Trial',i:'⏱️',d:'Fastest to the finish line.'},
+  skix:{n:'Ski Cross',i:'🏁',d:'4-rider race through berms and rollers.',hidden:1}};
 
 /* ---------- quests ---------- */
 const QUESTS=[
@@ -189,7 +195,7 @@ const TOD={map:{n:'Map default'},sunrise:{n:'Sunrise',sky:'linear-gradient(#3a4f
  sunset:{n:'Sunset',sky:'linear-gradient(#1b2a6b 0%,#6a55a8 42%,#f08a8f 74%,#ffd9a0 100%)',fog:0xf0a39a,hemi:[0xe6e9ff,0x7d78b8,.62],sun:[0xffd7a8,.52,[-.5,.6,.5]],rng:0xd8b8d8,night:0},
  night:{n:'Night',sky:'linear-gradient(#04061a 0%,#111845 60%,#27306e 100%)',fog:0x18204f,hemi:[0x9db0ff,0x2c3478,.62],sun:[0xc8d6ff,.4,[0,.9,-.3]],rng:0x5060a0,night:1}};
 const VIEWS=[['third','Third person'],['first','First person'],['side','Side cam'],['drone','Drone']];
-function fixSet(){const d={vol:.7,shadows:1,res:1,view:'third',zoom:1,fov:62,rot:1,hints:1,tod:'map',name:'',sideways:1,assist:1,invert:0,respawn:1,bots:1,slowmo:0,popups:1,units:'kmh',poles:1,bighead:0,shake:1,snow:1,fps:0,uiscale:1,speedo:1,fx:1,gog:'face',ao:0,gogOver:0};for(const k in d)if(save.set[k]===undefined)save.set[k]=d[k];}
+function fixSet(){const d={vol:.7,shadows:1,res:1,view:'third',zoom:1,fov:62,rot:1,hints:1,tod:'map',name:'',sideways:1,assist:1,invert:0,respawn:1,bots:1,slowmo:0,popups:1,units:'kmh',poles:1,bighead:0,shake:1,snow:1,fps:0,uiscale:1,speedo:1,fx:1,gog:'face',ao:0,gogOver:0,ride:'ski'};for(const k in d)if(save.set[k]===undefined)save.set[k]=d[k];}
 fixSet();
 /* v6 outfit migration: old jacket items were replaced by two puffer styles + colour pickers */
 function migrateOutfit(){const s=save;['j_puffer','j_clean','o_classic'].forEach(i=>{if(!s.owned.includes(i))s.owned.push(i);});

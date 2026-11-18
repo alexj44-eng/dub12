@@ -227,6 +227,9 @@ button{font-family:inherit;color:inherit}
 .tmgrid{display:flex;flex-direction:column;gap:12px;min-height:0;flex:1}
 #tmCv{width:100%;height:auto;max-height:46vh;object-fit:contain;border-radius:10px;cursor:crosshair}
 #tmList{overflow:auto;max-height:30vh;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;align-content:start}
+#tmSearch{margin-left:14px;flex:1;max-width:320px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 12px;color:#fff;font:600 14px Inter}
+#tmSearch:focus{outline:none;border-color:#ffd23f}#tmList button.hit{border-color:#ffd23f;background:rgba(255,210,63,.14)}
+.fitr{width:100%;accent-color:#ffd23f}
 #tmList .lbl{grid-column:1/-1;margin:8px 0 2px;opacity:1;font-weight:800}
 #tmList button{text-align:left;background:rgba(255,255,255,.07);border:2px solid transparent;border-radius:9px;padding:8px 10px;cursor:pointer}
 #tmList button:hover{border-color:#ffd23f}#tmList button b{display:block;font:800 13px Inter}#tmList button span{font-size:11px;opacity:.7}
@@ -434,7 +437,7 @@ button{font-family:inherit;color:inherit}
   <div id="hint"><b>A/D</b> carve · <b>W</b> tuck · <b>S</b> brake · <b>F</b> switch 180 · hold <b>Space</b> jump · air: <b>A/D</b> spin, <b>W/S</b> flip, <b>Shift/R/Q</b> grabs · snow: <b>Q/R</b> butter</div>
 </div>
 <div id="tmap" class="ov hide"><div class="glass tmbox">
-  <div class="shd" style="margin-bottom:10px"><div class="ttl" style="margin:0">Trail Map · Blue Mountain</div><button class="btn ghost" id="tmClose" style="margin-left:auto">CLOSE (M)</button></div>
+  <div class="shd" style="margin-bottom:10px"><div class="ttl" style="margin:0">Trail Map · Blue Mountain</div><input id="tmSearch" type="search" placeholder="Search runs, parks, lifts…" autocomplete="off"><button class="btn ghost" id="tmClose" style="margin-left:auto">CLOSE (M)</button></div>
   <div class="tmgrid"><canvas id="tmCv" width="300" height="720"></canvas><div id="tmList"></div></div>
   <div class="note">Click anywhere on the map to spawn there, or pick a run below. Red dashed lines are lifts (numbered like the real map). Yellow dot is you.</div>
 </div></div>

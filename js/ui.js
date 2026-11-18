@@ -22,7 +22,7 @@ function setView(v){if(tryLoad&&v!=='shop'){tryLoad=null;sk.apply(save.load,save
   $('pins').classList.toggle('hide',v!=='map');$('top').classList.toggle('dim',v==='design');
   if(v==='select')renderSelect.init=false;
   refreshWallet();try{({select:renderSelect,play:renderPlay,locker:renderLocker,shop:renderShop,pass:renderPass,quests:renderQuests,leaders:renderLeaders,map:renderMap,admin:renderAdmin})[v]?.();}catch(e){console.error('view',v,e);}sfx('ui');}
-const modeLabel=()=>MAPS[save.map].fr?'🏔️ Free Roam':MODES[save.gm].i+' '+MODES[save.gm].n;
+const modeLabel=()=>MAPS[save.map].sx?'🏁 Ski Cross race':MAPS[save.map].fr?'🏔️ Free Roam':MODES[save.gm].i+' '+MODES[save.gm].n;
 function renderPlay(){if(!MAPS[save.map])save.map='park';const M=MAPS[save.map],lk=!lvlOk(M.lvl);
   $('mpName').textContent=M.n;$('mpSub').textContent=modeLabel()+' · '+M.diff;$('mpThumb').style.background=M.sky;
   $('ready').disabled=lk;$('ready').textContent=lk?'REACH LV '+M.lvl:'QUEUE';
@@ -33,14 +33,14 @@ function toggleQueue(){if(mode==='queue'){mode='lobby';$('ready').classList.remo
 let selMap='park',selMode='battle';
 function renderSelect(){if(!renderSelect.init){selMap=save.map;selMode=save.gm;}renderSelect.init=true;
   const fr=!!MAPS[selMap].fr;
-  $('selModes').innerHTML=Object.keys(MODES).map(id=>{const Mo=MODES[id],dis=fr;return '<div class="mode'+(!fr&&selMode===id?' on':'')+(dis?' dis':'')+'" data-m="'+id+'"><i>'+Mo.i+'</i><b>'+Mo.n+'</b><span>'+Mo.d+'</span></div>';}).join('')+
-    (fr?'<div class="mode on"><i>🏔️</i><b>Free Roam</b><span>Explore the resort. No timer, no rivals.</span></div>':'');
+  $('selModes').innerHTML=Object.keys(MODES).filter(id=>!MODES[id].hidden).map(id=>{const Mo=MODES[id],dis=fr;return '<div class="mode'+(!fr&&selMode===id?' on':'')+(dis?' dis':'')+'" data-m="'+id+'"><i>'+Mo.i+'</i><b>'+Mo.n+'</b><span>'+Mo.d+'</span></div>';}).join('')+
+    (MAPS[selMap].sx?'<div class="mode on"><i>🏁</i><b>Ski Cross Race</b><span>You vs 3 riders out of the start gate. First to the finish wins.</span></div>':fr?'<div class="mode on"><i>🏔️</i><b>Free Roam</b><span>Explore the resort. No timer, no rivals.</span></div>':'');
   $('selModes').querySelectorAll('[data-m]').forEach(d=>d.onclick=()=>{if(fr)return;selMode=d.dataset.m;sfx('ui');renderSelect();});
-  $('selMaps').innerHTML=Object.keys(MAPS).map(id=>{const M=MAPS[id],lk=!lvlOk(M.lvl),b=save.best[(M.fr?'free':selMode)+'_'+id];
-    return '<div class="smap'+(selMap===id?' on':'')+(lk?' lk':'')+'" data-m="'+id+'"><div class="sth" style="background:'+M.sky+'">'+(M.fr?'<em>FREE ROAM</em>':'')+'</div><b>'+(lk?'🔒 ':'')+M.n+'</b><span>'+M.zone+' · '+M.diff+'</span><small>'+(lk?'Unlocks at level '+M.lvl:M.d)+'</small><i>Best: '+(b?(selMode==='time'&&!M.fr?fmt(b):b.toLocaleString()):'—')+'</i></div>';}).join('');
+  $('selMaps').innerHTML=Object.keys(MAPS).map(id=>{const M=MAPS[id],lk=!lvlOk(M.lvl),b=save.best[(M.sx?'skix':M.fr?'free':selMode)+'_'+id];
+    return '<div class="smap'+(selMap===id?' on':'')+(lk?' lk':'')+'" data-m="'+id+'"><div class="sth" style="background:'+M.sky+'">'+(M.sx?'<em>RACE</em>':M.fr?'<em>FREE ROAM</em>':'')+'</div><b>'+(lk?'🔒 ':'')+M.n+'</b><span>'+M.zone+' · '+M.diff+'</span><small>'+(lk?'Unlocks at level '+M.lvl:M.d)+'</small><i>Best: '+(b?(selMode==='time'&&!M.fr?fmt(b):b.toLocaleString()):'—')+'</i></div>';}).join('');
   $('selMaps').querySelectorAll('.smap').forEach(d=>d.onclick=()=>{if(d.classList.contains('lk')){toast('Reach level '+MAPS[d.dataset.m].lvl+' to unlock');return;}selMap=d.dataset.m;sfx('ui');renderSelect();});
   $('selGo').textContent='CONFIRM · '+MAPS[selMap].n.toUpperCase();}
-function tickQueue(dt){qT+=dt;const bt=save.gm==='battle'&&!MAPS[save.map].fr;
+function tickQueue(dt){qT+=dt;const bt=(save.gm==='battle'&&!MAPS[save.map].fr)||!!MAPS[save.map].sx;
   if(qT<2.2){const n=bt?Math.min(4,1+Math.floor(qT/.6)):1;
     $('qstat').innerHTML=bt?'Filling lobby '+n+'/4<br>'+['You'].concat(BOTS.map(b=>b.name)).slice(0,n).join(' · '):'Loading '+MAPS[save.map].n+'.'.repeat(1+((qT*3)|0)%3);}
   else{$('qstat').innerHTML=bt?'Lobby full':'Ready';$('count').classList.remove('hide');$('countMap').textContent=MODES[save.gm].n+' · '+MAPS[save.map].n;const n=3-Math.floor((qT-2.2)/.7);$('countN').textContent=n>0?n:'GO';if(qT>2.2+.7*3.4)startRun(save.map,save.gm);}}
@@ -76,14 +76,14 @@ function renderTricks(el,nm){el.className='grid';
   const sel=kind==='style'?IDX[save.tricks.style]:IDX[save.tricks.g[trickSlot]];
   nm.innerHTML='<b>'+sel.n+'</b>'+sel.d+' Score bonus x'+sel.m.toFixed(2)+(kind==='style'?'. Used when you flip and spin in the same jump.':'. Hold the grab key in the air.');}
 /* quick gear toggles, always visible at the top of the locker */
-const GEAR_TOG=[['Hood',[['Down',false],['Up',true]],()=>!!save.body.hood,v=>{save.body.hood=v;}],
+const GEAR_TOG=[['Ride',[['Skis','ski'],['Snowboard','board']],()=>save.set.ride||'ski',v=>{save.set.ride=v;}],['Hood',[['Down',false],['Up',true]],()=>!!save.body.hood,v=>{save.body.hood=v;}],
   ['Goggles',[['On face','face'],['On helmet','helmet'],['Off','off']],()=>save.set.gog,v=>{save.set.gog=v;}],
   ['Goggles + hood',[['Under hood',0],['Over hood',1]],()=>save.set.gogOver,v=>{save.set.gogOver=v;}],
   ['Poles',[['On',1],['Off',0]],()=>save.set.poles,v=>{save.set.poles=v;}]];
 function renderToggles(){const tg=$('ltog');
   tg.innerHTML=GEAR_TOG.map((t,i)=>'<div class="tg"><span>'+t[0]+'</span>'+t[1].map((o,j)=>'<button data-i="'+i+'" data-j="'+j+'" class="'+(t[2]()===o[1]?'on':'')+'">'+o[0]+'</button>').join('')+'</div>').join('');
   tg.querySelectorAll('button').forEach(b=>b.onclick=()=>{const t=GEAR_TOG[+b.dataset.i];t[3](t[1][+b.dataset.j][1]);persist();
-    sk.gogMode=save.set.gog;sk.gogOver=!!save.set.gogOver;sk.apply(save.load,save.body);sk.setPoles(save.set.poles);for(const k in THUMB)delete THUMB[k];sfx('ui');renderLocker();});}
+    sk.gogMode=save.set.gog;sk.gogOver=!!save.set.gogOver;sk.apply(save.load,save.body);sk.setRide(save.set.ride);sk.setPoles(save.set.poles);for(const k in THUMB)delete THUMB[k];sfx('ui');renderLocker();});}
 function renderLocker(){
   renderToggles();
   const cats=$('lcats');cats.innerHTML='<div class="lbl">Character</div>'+BODYTABS.map(b=>'<button data-c="'+b[0]+'">'+b[1]+'</button>').join('')+'<div class="lbl">Gear</div>'+CATS.map(c=>'<button data-c="'+c[0]+'">'+c[1]+'</button>').join('');
@@ -111,6 +111,15 @@ function renderLocker(){
         const box=document.createElement('div');box.className='swrow';el.appendChild(box);
         JCOL.forEach((c,i)=>{const d=document.createElement('button');d.className='swd'+(save.body[key]===i?' on':'');d.title=c[0];d.style.background=hex(c[1]);d.onclick=()=>setB(key,i);box.appendChild(d);});};
       row('Jacket colour','jc');if(IDX[save.load.jacket].stripe!==false)row('Stripe colour','sc');}
+    // fit sliders: how baggy the jacket / pants are (live preview while dragging)
+    const fit=(label,key,def)=>{const l=document.createElement('div');l.className='lbl fitlbl';l.style.gridColumn='1/-1';l.style.marginTop='8px';l.textContent=label;el.appendChild(l);
+      const r=document.createElement('input');r.type='range';r.min=0;r.max=100;r.className='fitr';r.style.gridColumn='1/-1';r.value=Math.round(100*(save.body[key]!==undefined?save.body[key]:def));
+      r.oninput=()=>{save.body[key]=r.value/100;sk.apply(save.load,save.body);};r.onchange=()=>{persist();for(const t in THUMB)delete THUMB[t];};el.appendChild(r);};
+    if(lockCat==='skis'){const l=document.createElement('div');l.className='lbl';l.style.gridColumn='1/-1';l.style.marginTop='8px';l.textContent='Pole colour';el.appendChild(l);
+      const box=document.createElement('div');box.className='swrow';el.appendChild(box);
+      POLECOL.forEach((c,i)=>{const d=document.createElement('button');d.className='swd'+(((save.body.pc||0)===i)?' on':'');d.title=c[0];d.style.background=c[2]?'linear-gradient(135deg,'+hex(c[1])+',#fff 55%,'+hex(c[1])+')':hex(c[1]);d.onclick=()=>setB('pc',i);box.appendChild(d);});}
+    if(lockCat==='jacket')fit('Jacket fit: slim ↔ baggy','jf',.3);
+    if(lockCat==='pants')fit('Pants fit: slim ↔ baggy','pf',.2);
     const cur=IDX[save.load[lockCat]];nm.innerHTML=lockCat==='skis'?'<b>'+(cur?cur.n:'Custom skis')+'</b>'+statBars(save.load.skis):cur?'<b style="color:'+RAR[cur.rarity].c+'">'+cur.n+'</b>'+RAR[cur.rarity].n+' '+CATS.find(c=>c[0]===lockCat)[1].toLowerCase():'<b>Custom skis</b>Your own design';}
 }
 
@@ -266,11 +275,12 @@ function wire(){
   window.addEventListener('pointerdown',()=>audioStart(),{once:true});
   window.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(capture){e.preventDefault();doCapture(e.code);return;}
     // free-roam resort keys: M trail map, E ride the lift at the base, T skip to the top
-    if(mode==='run'&&map&&map.fr&&!endShown&&$('settings').classList.contains('hide')){
+    if(mode==='run'&&map&&map.fr&&curMode!=='skix'&&!endShown&&$('settings').classList.contains('hide')){
       if(e.code==='KeyM'&&!e.repeat){tmapOpen?closeTrailMap():openTrailMap();return;}
       if(tmapOpen){if(e.code==='Escape')closeTrailMap();return;}
       if(e.code==='KeyE'&&!e.repeat&&nearLift(p)){boardLift(p);return;}
-      if(e.code==='KeyT'&&!e.repeat&&!paused){arriveTop(p,p.lift||nearLift(p)||undefined);return;}}
+      if(e.code==='KeyY'&&!e.repeat&&!paused){towToggle(p);return;}
+      if(e.code==='KeyT'&&!e.repeat&&!paused){if(p.mode!=='lift'&&p.spawnPt){const s=p.spawnPt;spawnAt(s.x,s.z,s.label,true);}else arriveTop(p,p.lift||nearLift(p)||undefined);return;}}
     if(e.code==='Escape'){if(!$('settings').classList.contains('hide')){closeSettings();return;}if(mode==='run'){if(endShown)return;openSettings();}else if(mode==='lobby'){if(!$('detail').classList.contains('hide'))$('detail').classList.add('hide');else if(view!=='play')setView('play');}else if(mode==='queue')toggleQueue();return;}
     if(e.code==='Enter'){if(mode==='run'&&endShown)startRun(curMap);else if(mode==='lobby'&&view==='play')toggleQueue();return;}
     const ks=keysFor(e.code);if(ks.includes('cam')&&mode==='run'&&!e.repeat){const i=VIEWS.findIndex(v=>v[0]===save.set.view);save.set.view=VIEWS[(i+1)%VIEWS.length][0];persist();toast(VIEWS.find(v=>v[0]===save.set.view)[1]);}
@@ -328,7 +338,7 @@ function openSettings(){if(mode==='run'){paused=true;for(const k in keys)keys[k]
   $('settings').classList.remove('hide');}
 function closeSettings(){$('settings').classList.add('hide');persist();applySettings();if(mode==='run'&&!endShown)paused=false;}
 function doCapture(code){const c=capture;capture=null;if(code==='Escape'){openSettings();return;}if(code==='Backspace'||code==='Delete')code='';binds()[c.a][c.s]=code;persist();openSettings();updateHint();}
-function applySettings(){if(sk){sk.setPoles(save.set.poles);if(sk.gogMode!==save.set.gog){sk.gogMode=save.set.gog;sk.apply(save.load,save.body);}if(p&&mode==='run')p.name=save.acct?save.acct.u:(save.set.name||'You');}
+function applySettings(){if(sk){sk.setRide(save.set.ride);sk.setPoles(save.set.poles);if(sk.gogMode!==save.set.gog){sk.gogMode=save.set.gog;sk.apply(save.load,save.body);}if(p&&mode==='run')p.name=save.acct?save.acct.u:(save.set.name||'You');}
   $('fps').classList.toggle('hide',!save.set.fps);$('spd').classList.toggle('hide',!save.set.speedo);$('hud').style.zoom=save.set.uiscale;$('ui').style.zoom=save.set.uiscale;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2)*[.6,1][save.set.res]);renderer.setSize(W,H,false);sun.castShadow=!!save.set.shadows;lobby.traverse(o=>{if(o.isDirectionalLight&&o.shadow)o.castShadow=!!save.set.shadows;});
   $('hint').classList.toggle('hide',!save.set.hints);updateHint();}

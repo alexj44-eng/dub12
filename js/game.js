@@ -37,7 +37,7 @@ function endButter(r){if(r.butter){
     if(deg>=180)award(r,r.butter+' Butter '+deg,r.butT*300+deg*4);else if(r.butT>.4)award(r,r.butter+' Butter',r.butT*300);
     r.butter=null;r.butT=0;r.bdeg=0;}}
 // pre-wind: steering while you load the jump stores rotation that releases at take-off
-function startAir(r){endButter(r);r.hsk=0;r.bsp=0;r.mode='air';r.airT=0;r.flipAcc=0;r.spinAcc=0;r.grabT=0;r.grabs={};r.grab=null;r.charge=0;r.fv=0;r.swT=r.sw;
+function startAir(r){endButter(r);r.mode='air';   // keep any butter/hockey-stop angle; it eases out after landing (no snap)r.airT=0;r.flipAcc=0;r.spinAcc=0;r.grabT=0;r.grabs={};r.grab=null;r.charge=0;r.fv=0;r.swT=r.sw;
   const ST=r.stat||[3,3,3];r.sv=r.wind*SPIN*(1+.06*(ST[2]-3))*(r===p?save.set.rot:1);r.wind=0;r.landQ=null;}
 function scoreTrick(r,suffix,pen){pen=pen||1;
   const flips=Math.round(Math.abs(r.flipAcc)/(Math.PI*2)),spins=Math.round(Math.abs(r.spinAcc)/Math.PI)*180;
@@ -87,6 +87,9 @@ const bodyYaw=r=>r.head+(r.sw?Math.PI:0)+r.spin+r.ry+r.yo+(r.bsp||0)+(r.hsk||0)*
 function step(r,dt){
   const I=r.inp;
   if(r.mode==='lift'){liftStep(r,dt);return;}
+  if(r.mode==='tow'){towStep(r,dt);return;}
+  if(r.safeT>0)r.safeT-=dt;
+  if(curMode==='skix'&&RACE&&!RACE.go){r.vx=r.vz=0;r.y=hAt(r.x,r.z);r.mode='ground';return;}   // waiting in the start gate
   if(r.crashT>0){r.crashT-=dt;if(r.crashT<=0){getUp(r);return;}}
   const ctl=r.crashT<=0&&!r.fin;let pop=0;
   if(!r.fin)r.time+=dt;
@@ -103,8 +106,8 @@ function step(r,dt){
     const fx=Math.sin(r.head),fz=Math.cos(r.head),lx=fz,lz=-fx;
     r.vx-=G*gx/den*dt;r.vz-=G*gz/den*dt;
     let vF=r.vx*fx+r.vz*fz,vL=r.vx*lx+r.vz*lz;vL*=Math.exp(-(I.s&&ctl?3.2:9)*dt);
-    const sp=Math.hypot(vF,vL),bt=ctl&&sp>120?(I.bn?'Nose':I.bt?'Tail':null):null;
-    let drag=DRAG*(I.w&&ctl?.5:1)*(1-.07*(ST[0]-3))*sp*sp+FRIC;if(I.s&&ctl)drag+=750;if(r.fin)drag+=650;if(r.crashT>0)drag+=300;if(bt)drag+=60;
+    const sp=Math.hypot(vF,vL),bt=ctl&&sp>(r.butter?20:55)?(I.bn?'Nose':I.bt?'Tail':null):null;   // butters hold down to a crawl once started
+    let drag=DRAG*(I.w&&ctl?.5:1)*(1-.07*(ST[0]-3))*sp*sp+FRIC;if(I.s&&ctl)drag+=750;if(r.fin)drag+=650;if(curMode==='skix')drag*=2.4;if(r.crashT>0)drag+=300;if(bt)drag+=60;
     if(sp>0){const k=Math.max(0,sp-drag*dt)/sp;vF*=k;vL*=k;}
     const atBase=map.stopZ&&r.z>map.stopZ;
     if(I.w&&ctl&&sp<170)vF+=320*dt;if(ctl&&!r.fin&&!atBase&&vF<110)vF+=Math.min(110-vF,900*dt); // skate/push when slow so you never stall on an up-ramp
@@ -113,7 +116,7 @@ function step(r,dt){
     if(bt){r.butter=bt;r.butT+=dt;if(r===p)st.butterT+=dt;}else endButter(r);
     // butter spins: pressing nose/tail and steering pivots the skis on the snow, 180 at a time
     if(bt&&ctl&&(I.a||I.d)){r.bsp+=(I.a-I.d)*5.4*dt;if(Math.abs(r.bsp)>=Math.PI){r.bsp-=Math.sign(r.bsp)*Math.PI;r.sw=!r.sw;r.bdeg+=180;if(r===p)sfx('ui');}}
-    else if(!bt)r.bsp*=Math.exp(-dt*12);
+    else if(!bt)r.bsp*=Math.exp(-dt*6);   // ease the skis back straight instead of snapping
     // hockey stop: brake hard at speed and the skis swing sideways, rider leans into it, snow sprays
     const hsT=ctl&&I.s&&sp>140&&!bt?1:0;if(hsT&&r.hsk<.05)r.hsd=r.steer>.1?1:r.steer<-.1?-1:(r.hsd||1);
     r.hsk+=(hsT-r.hsk)*Math.min(1,dt*(hsT?9:5));
@@ -204,7 +207,10 @@ function collide(r){const bk=map.buckets,k0=(r.z/300)|0;
       else{const dx=r.x-t.x,dz=r.z-t.z,d2=dx*dx+dz*dz,rr=t.rad+5;if(d2>=rr*rr)continue;const d=Math.sqrt(d2)||1;nx=dx/d;nz=dz/d;pen=rr-d;}
       if(t.solid){r.x+=nx*pen;r.z+=nz*pen;const vn=r.vx*nx+r.vz*nz;if(vn<0){r.vx-=1.5*vn*nx;r.vz-=1.5*vn*nz;r.vx*=.6;r.vz*=.6;}
         if(-vn>420&&r.mode!=='air'){crash(r);say(r,'Hit a wall',0,true);}if(r===p)shake=Math.max(shake,.15);continue;}
-      crash(r);r.x+=nx*pen;r.vx=nx*130;r.vz=Math.max(40,r.vz*.2);if(r===p)say(r,t.rad>15?'Wiped out':'Hit a tree',0,true);return;}}}
+      if(r.safeT>0){r.x+=nx*pen;r.z+=nz*pen;continue;}   // a few seconds of spawn protection: trees just nudge you
+      // trees/posts: glancing hits brush you off and slow you a little; only a fast, square-on hit wipes you out
+      {const vn=r.vx*nx+r.vz*nz;r.x+=nx*pen;r.z+=nz*pen;if(-vn<560||r.mode==='air'){if(vn<0){r.vx-=1.2*vn*nx;r.vz-=1.2*vn*nz;}r.vx*=.85;r.vz*=.85;if(r===p)shake=Math.max(shake,.1);continue;}}
+      crash(r);r.vx=nx*130;r.vz=Math.max(40,r.vz*.2);if(r===p)say(r,t.rad>15?'Wiped out':'Hit a tree',0,true);return;}}}
 /* riders bump each other instead of passing through */
 function riderBumps(){for(let i=0;i<riders.length;i++)for(let j=i+1;j<riders.length;j++){const a=riders[i],b=riders[j];
   if(a.mode==='lift'||b.mode==='lift'||a.crashT>0||b.crashT>0)continue;const dx=b.x-a.x,dz=b.z-a.z,dy=b.y-a.y,d=Math.hypot(dx,dz);
@@ -212,6 +218,7 @@ function riderBumps(){for(let i=0;i<riders.length;i++)for(let j=i+1;j<riders.len
     const rv=(b.vx-a.vx)*nx+(b.vz-a.vz)*nz;if(rv<0){const im=-rv*.8;a.vx-=nx*im*.5;a.vz-=nz*im*.5;b.vx+=nx*im*.5;b.vz+=nz*im*.5;
       if(-rv>380){const v=Math.hypot(a.vx,a.vz)<Math.hypot(b.vx,b.vz)?a:b;crash(v);say(v,'Collision!',0,true);}else if(a===p||b===p){shake=Math.max(shake,.12);sfx('land',.2);}}}}}
 function ai(r){const b=r.bot,I=r.inp;I.a=I.d=I.w=I.s=I.g1=I.g2=I.g3=I.bn=I.bt=I.jump=I.f=0;
+  if(curMode==='skix'){skixAI(r);return;}
   if(r.fin||r.crashT>0){b.plan=null;return;}
   if(r.mode==='air'){
     if(!b.plan){const T=Math.max(0,2*r.vy/G)+.32,u=Math.random(),P=b.plan={ft:0,st:0,g:null,T};
@@ -242,10 +249,13 @@ const snow=new U.Points(snG,new U.PointsMaterial({color:0xffffff,size:2.6,transp
 function snowUpdate(dt){const lv=save.set.snow;snow.visible=lv>0;if(!lv)return;snG.setDrawRange(0,lv===2?SNN:550);snow.position.copy(cam.position);
   for(let i=0;i<SNN;i++){let y=snP[i*3+1]-dt*(60+(i%7)*8),x=snP[i*3]+Math.sin(i+CLOTH.t.value)*dt*12;if(y<-250)y+=600;snP[i*3+1]=y;snP[i*3]=x;}snG.attributes.position.needsUpdate=true;}
 /* ---------- view ---------- */
-function place(r,dt){const R=r.sk.root;r.sk.head.scale.setScalar((save.set.bighead?1.55:1)*(r.sk.headS||1));R.scale.setScalar(r.sk.hs);R.position.set(r.x,r.y+.2,r.z);R.rotation.set(0,bodyYaw(r),0);
+function place(r,dt){const R=r.sk.root;r.sk.head.scale.setScalar((save.set.bighead?1.55:1)*(r.sk.headS||1));R.scale.setScalar(r.sk.hs);R.position.set(r.x,r.y+.8,r.z);const yw=bodyYaw(r);R.rotation.set(0,yw,0);
   r.sk.flipG.rotation.set(r.pitch+r.bp,0,-r.roll*(r.sw?-1:1)+r.tilt*Math.sin(r.pitch));
+  // on the snow, lay the skis on the actual slope under the way they point (spun butters, hockey stops, side-hills) so they never sink out of sight
+  if(r.mode==='ground'&&r.crashT<=0){const s=Math.sin(yw),c=Math.cos(yw);r.sk.flipG.rotation.x=gPitch(r.x,r.z,s,c)+r.bp;r.sk.flipG.rotation.z=-gPitch(r.x,r.z,c,-s)-r.roll*(r.sw?-1:1);}
   const g=r.mode==='ground',tuck=g&&r.inp.w&&!r.charge&&!r.fin&&r.crashT<=0;
   if(r.mode==='lift'){r.sk.flipG.rotation.set(0,0,0);r.sk.pose({sit:true},dt);return;}
+  if(r.mode==='tow'){const s=Math.sin(yw),c=Math.cos(yw);r.sk.flipG.rotation.set(gPitch(r.x,r.z,s,c),0,-gPitch(r.x,r.z,c,-s));r.sk.pose({crouch:.4,tow:true},dt);return;}
   r.sk.pose({crouch:(g?(r.charge>0?.35+.65*r.charge:tuck?.8:.3):r.mode==='rail'?.45:.3)+r.comp*.5,tuck,air:r.mode==='air'&&r.airT>.12,grab:r.grab,steer:r.steer*(r.sw?-1:1),look:r.sw&&r.mode!=='air'?.85:0},dt);}
 const fmt=t=>{const m=(t/60)|0,s=t-m*60;return m+':'+(s<10?'0':'')+s.toFixed(2);};
 function hud(dt){
@@ -254,7 +264,8 @@ function hud(dt){
   const onR=p.mode==='rail';$('bal').classList.toggle('hide',!onR);if(onR){const b=$('bal').lastChild;b.style.left=(50+p.bal*48)+'%';b.style.background=Math.abs(p.bal)>.7?'#ff4d6d':Math.abs(p.bal)>.4?'#ffb03f':'#39d98a';}
   if(curMode==='time')$('timer').textContent=fmt(p.time);
   feed.forEach(f=>f.t-=dt);feed=feed.filter(f=>f.t>0);
-  hudT-=dt;if(hudT<=0){hudT=.2;if(map.fr)resortHud();
+  hudT-=dt;if(hudT<=0){hudT=.2;if(map.fr&&curMode!=='skix')resortHud();
+    if(curMode==='skix'&&RACE){$('mapName').textContent='🏁 Ski Cross · L-Hill';$('board').innerHTML=raceRank().map((r,i)=>'<div class="'+(r===p?'me':'')+'"><span>'+(i+1)+'. '+r.name+'</span><span>'+(r.fin?fmt(r.ft):'')+'</span></div>').join('');}
     if(curMode==='battle'){$('board').innerHTML=riders.slice().sort((a,b)=>b.score-a.score).map((r,i)=>'<div class="'+(r===p?'me':'')+'"><span>'+(i+1)+'. '+r.name+(r===p&&isStaff()?' <i class=tag>'+save.acct.role.toUpperCase()+'</i>':'')+'</span><span>'+r.score.toLocaleString()+'</span></div>').join('');
       $('feed').innerHTML=feed.map(f=>'<div>'+f.s+'</div>').join('');}}
 }
@@ -268,18 +279,22 @@ function drawRun(dt){
   nv.set(-gx,1,-gz).normalize();shadow.position.set(p.x+nv.x*1.5,gh+nv.y*1.5,p.z+nv.z*1.5);shadow.quaternion.setFromUnitVectors(zAx,nv);
   const hgt=Math.max(0,p.y-gh);shadow.scale.setScalar(Math.max(.35,1-hgt/420));shadow.material.opacity=hgt>4?.26*Math.max(.3,1-hgt/500):0;
   sun.position.set(p.x+sunDir.x*1800,p.y+sunDir.y*1800,p.z+sunDir.z*1800);sun.target.position.set(p.x,p.y,p.z+150);sun.target.updateMatrixWorld();
-  const sp=Math.hypot(p.vx,p.vz);let tx=sp>60?p.vx/sp:Math.sin(p.head),tz=sp>60?p.vz/sp:Math.cos(p.head);if(p.mode==='lift'){tx=-.35;tz=-1;}else if(tz<.25){tz=.25;const n=Math.hypot(tx,tz);tx/=n;tz/=n;}
+  const sp=Math.hypot(p.vx,p.vz);let tx=sp>60?p.vx/sp:Math.sin(p.head),tz=sp>60?p.vz/sp:Math.cos(p.head);if(p.mode==='lift'){tx=-.35;tz=-1;}else if(p.mode==='tow'&&typeof SLED!=='undefined'&&SLED){tx=Math.sin(SLED.yaw);tz=Math.cos(SLED.yaw);}else if(tz<.25){tz=.25;const n=Math.hypot(tx,tz);tx/=n;tz/=n;}
   const k=1-Math.exp(-dt*3.2);camD.x+=(tx-camD.x)*k;camD.z+=(tz-camD.z)*k;const n=Math.hypot(camD.x,camD.z)||1;camD.x/=n;camD.z/=n;
   const VW=save.set.view,Z=save.set.zoom;let cx,cy,cz,kk=1-Math.exp(-dt*9),ky=1-Math.exp(-dt*6);if(p.sk.firstPerson)p.sk.firstPerson(VW==='first');else p.sk.head.visible=VW!=='first';
   // first person: eyes just in front of the (hidden) head, looking where you're travelling
-  if(VW==='first'){p.sk.head.getWorldPosition(_hp);cx=_hp.x+camD.x*3;cy=_hp.y+2;cz=_hp.z+camD.z*3;kk=ky=1;}
+  if(p.mode==='lift'&&VW!=='first'){cx=p.x+150*Z;cy=p.y+62*Z;cz=p.z-175*Z;}   // in front of the chair, off to the side: you, riding up, the slope dropping away behind
+  else if(VW==='first'){p.sk.head.getWorldPosition(_hp);cx=_hp.x+camD.x*3;cy=_hp.y+2;cz=_hp.z+camD.z*3;kk=ky=1;}
   else if(VW==='side'){const px=camD.z,pz=-camD.x;cx=p.x+px*230*Z-camD.x*70;cz=p.z+pz*230*Z-camD.z*70;cy=Math.max(p.y+45*Z,hAt(cx,cz)+30);}
   else if(VW==='drone'){cx=p.x-camD.x*120*Z;cz=p.z-camD.z*120*Z;cy=p.y+300*Z;}
   else{const back=(150+Math.min(50,sp*.05))*Z;cx=p.x-camD.x*back;cz=p.z-camD.z*back;cy=Math.max(p.y+72*Z,hAt(cx,cz)+40);}
   cam.position.x+=(cx-cam.position.x)*kk;cam.position.y+=(cy-cam.position.y)*ky;cam.position.z+=(cz-cam.position.z)*kk;
-  if(VW==='first')cam.lookAt(cam.position.x+camD.x*200,cam.position.y-30,cam.position.z+camD.z*200);
+  // chairlift: camera hangs off to the outside and behind the chair, so you see yourself riding and the lift line climbing ahead
+  const LC=p.mode==='lift'&&VW!=='first';
+  if(LC)cam.lookAt(p.x-10,p.y+24,p.z+60);
+  else if(VW==='first')cam.lookAt(cam.position.x+camD.x*200,cam.position.y-30,cam.position.z+camD.z*200);
   else cam.lookAt(p.x+camD.x*(VW==='third'?130:20),p.y+8,p.z+camD.z*(VW==='third'?130:20));
-  if(VW==='third')cam.rotateZ(p.roll*.12*(p.sw?-1:1));
+  if(VW==='third'&&!LC)cam.rotateZ(p.roll*.12*(p.sw?-1:1));
   if(save.set.shake&&shake>0&&dt>0){cam.position.x+=(Math.random()-.5)*shake*14;cam.position.y+=(Math.random()-.5)*shake*14;shake=Math.max(0,shake-dt*1.6);}
   snowUpdate(dt);
   const fv=save.set.fov-2+Math.min(16,sp*.018);if(Math.abs(cam.fov-fv)>.2){cam.fov+=(fv-cam.fov)*Math.min(1,dt*4);cam.updateProjectionMatrix();}
@@ -290,18 +305,21 @@ function drawRun(dt){
 
 /* ---------- flow ---------- */
 function newStats(){return {corks:0,switchTricks:0,doubles:0,big:0,butterT:0,slides:0,airT:0,grabT:0,finished:0,wins:0};}
-function startRun(id,gm){curMap=id;curMode=gm||curMode;const FR=!!MAPS[id].fr;if(FR)curMode='free';if(FR)buildResort();else buildMap(id);buildGfx();
-  riders=curMode==='battle'?[p].concat(BOTS):[p];BOTS.forEach(b=>b.sk.root.visible=curMode==='battle');
-  p.stat=statOf(save.load.skis);p.name=save.acct?save.acct.u:(save.set.name||'You');BOTS.forEach(b=>b.bot.sk_=b.bot.sk_||b.bot.skill);BOTS.forEach(b=>b.bot.skill=Math.min(1,b.bot.sk_*[.5,1,1.45][save.set.bots]));spawn(p,0);if(curMode==='battle')BOTS.forEach(b=>spawn(b,b.bot.lane));audioStart();
-  clearDebris();clearTracks();riders.forEach(r=>r.sk.gear(true));sk.setPoles(save.set.poles);st=newStats();endShown=false;paused=false;menuKind=null;shake=0;feed=[];pPos.fill(-1e6);pLife.fill(0);camD={x:0,z:1};cam.position.set(0,p.y+80,p.z-160);
+function startRun(id,gm){curMap=id;curMode=gm||curMode;const FR=!!MAPS[id].fr,SX=!!MAPS[id].sx;if(FR)curMode=SX?'skix':'free';if(FR)buildResort();else buildMap(id);buildGfx();
+  const multi=curMode==='battle'||SX;riders=multi?[p].concat(BOTS):[p];BOTS.forEach(b=>b.sk.root.visible=multi);RACE=null;
+  p.stat=statOf(save.load.skis);p.name=save.acct?save.acct.u:(save.set.name||'You');BOTS.forEach(b=>b.bot.sk_=b.bot.sk_||b.bot.skill);BOTS.forEach(b=>b.bot.skill=Math.min(1,b.bot.sk_*[.5,1,1.45][save.set.bots]));spawn(p,0);if(multi)BOTS.forEach(b=>spawn(b,b.bot.lane));audioStart();
+  clearDebris();clearTracks();riders.forEach(r=>{if(r!==p&&r.sk.setRide)r.sk.setRide(Math.random()<.3?'board':'ski');r.sk.gear(true);});if(p.sk.setRide)p.sk.setRide(save.set.ride);sk.setPoles(save.set.poles);st=newStats();endShown=false;paused=false;menuKind=null;shake=0;feed=[];pPos.fill(-1e6);pLife.fill(0);camD={x:0,z:1};cam.position.set(0,p.y+80,p.z-160);
   for(const k in keys)keys[k]=0;
-  $('mapName').textContent=MODES[curMode].n+' · '+MAPS[id].n;$('timer').textContent='';$('board').innerHTML='';$('feed').innerHTML='';$('board').classList.toggle('hide',curMode!=='battle');
-  $('prompt').classList.toggle('hide',!FR);if(FR){arriveTop(p);if(typeof tmapOpen!=='undefined'&&tmapOpen)closeTrailMap();}
+  $('mapName').textContent=MODES[curMode].n+' · '+MAPS[id].n;$('timer').textContent='';$('board').innerHTML='';$('feed').innerHTML='';$('board').classList.toggle('hide',!multi);
+  $('prompt').classList.toggle('hide',!FR||SX);if(typeof tmapOpen!=='undefined'&&tmapOpen)closeTrailMap();if(SX)raceSetup();else if(FR)arriveTop(p);
   setMode('run');}
 function openMenu(){openSettings();}
 function endRun(){endShown=true;const key=curMode+'_'+curMap,b=save.best[key]||0;let title,html;const lv0=level();
   let xp=0,coins=0;
-  if(curMode==='time'){const t=+p.time.toFixed(2),nb=!b||t<b;if(nb){save.best[key]=t;}title=fmt(t);html=nb?'New best time!':'Best: '+fmt(b);xp=300+(nb?200:0);coins=60+(nb?60:0);}
+  if(curMode==='skix'){const rk=raceRank(),pos=rk.indexOf(p)+1,t=+(p.ft||0).toFixed(2),nb=!b||t<b;if(nb)save.best[key]=t;title=['1ST','2ND','3RD','4TH'][pos-1]+' PLACE';
+    if(pos===1)st.wins=1;xp=200+[400,250,120,60][pos-1]+(nb?100:0);coins=50+[150,90,50,20][pos-1];
+    html=(nb?'New best time! ':'')+fmt(t)+rk.map((r,i)=>'<div class="'+(r===p?'me':'')+'">'+(i+1)+'. '+r.name+(r.fin?' — '+fmt(r.ft):' — DNF')+'</div>').join('');}
+  else if(curMode==='time'){const t=+p.time.toFixed(2),nb=!b||t<b;if(nb){save.best[key]=t;}title=fmt(t);html=nb?'New best time!':'Best: '+fmt(b);xp=300+(nb?200:0);coins=60+(nb?60:0);}
   else{if(p.score>b)save.best[key]=p.score;xp=150+Math.round(p.score/25);coins=40+Math.round(p.score/120);
     if(curMode==='battle'){const rk=riders.slice().sort((a,c)=>c.score-a.score),pos=rk.indexOf(p)+1;title=pos===1?'VICTORY':'#'+pos+' of 4';if(pos===1){st.wins=1;xp+=300;coins+=100;}
       html=rk.map((r,i)=>'<div class="'+(r===p?'me':'')+'">'+(i+1)+'. '+r.name+' — '+r.score.toLocaleString()+'</div>').join('');}
