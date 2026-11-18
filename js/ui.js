@@ -13,7 +13,7 @@ function refreshWallet(){const lv=level(),x=save.xp%XP_PER_LVL;$('lvl').textCont
 function questProgress(v){ensureQuests();const done=[];save.q.list.forEach(q=>{if(q.prog>=q.goal)return;const a=v[q.k]||0;q.prog=q.max?Math.max(q.prog,a):q.prog+a;if(q.prog>=q.goal){q.prog=q.goal;done.push(q);}});return done;}
 
 /* ---------- modes & views ---------- */
-function setMode(m){mode=m;if(sk)sk.head.visible=true;const run=m==='run';$('ui').classList.toggle('hide',run);$('hud').classList.toggle('hide',!run);$('end').classList.add('hide');$('count').classList.add('hide');$('settings').classList.add('hide');paused=false;
+function setMode(m){mode=m;if(sk){if(sk.firstPerson)sk.firstPerson(false);else sk.head.visible=true;}const run=m==='run';$('ui').classList.toggle('hide',run);$('hud').classList.toggle('hide',!run);$('end').classList.add('hide');$('count').classList.add('hide');$('settings').classList.add('hide');paused=false;
   $('ready').classList.remove('q');$('qstat').innerHTML='';
   if(run)scene.add(sk.root);else{lobby.add(sk.root);cv.style.background='linear-gradient(#2d4a9a 0%,#7f8fd0 38%,#f6b9a0 70%,#ffe2c4 100%)';setView('play');}}
 function setView(v){if(tryLoad&&v!=='shop'){tryLoad=null;sk.apply(save.load,save.body);}
@@ -270,7 +270,7 @@ function wire(){
       if(e.code==='KeyM'&&!e.repeat){tmapOpen?closeTrailMap():openTrailMap();return;}
       if(tmapOpen){if(e.code==='Escape')closeTrailMap();return;}
       if(e.code==='KeyE'&&!e.repeat&&nearLift(p)){boardLift(p);return;}
-      if(e.code==='KeyT'&&!e.repeat&&!paused){arriveTop(p);return;}}
+      if(e.code==='KeyT'&&!e.repeat&&!paused){arriveTop(p,p.lift||nearLift(p)||undefined);return;}}
     if(e.code==='Escape'){if(!$('settings').classList.contains('hide')){closeSettings();return;}if(mode==='run'){if(endShown)return;openSettings();}else if(mode==='lobby'){if(!$('detail').classList.contains('hide'))$('detail').classList.add('hide');else if(view!=='play')setView('play');}else if(mode==='queue')toggleQueue();return;}
     if(e.code==='Enter'){if(mode==='run'&&endShown)startRun(curMap);else if(mode==='lobby'&&view==='play')toggleQueue();return;}
     const ks=keysFor(e.code);if(ks.includes('cam')&&mode==='run'&&!e.repeat){const i=VIEWS.findIndex(v=>v[0]===save.set.view);save.set.view=VIEWS[(i+1)%VIEWS.length][0];persist();toast(VIEWS.find(v=>v[0]===save.set.view)[1]);}

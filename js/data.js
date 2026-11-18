@@ -147,7 +147,7 @@ const MAPS={
  mega:{n:'Mega Ramp',zone:'Summit',d:'One tower drop-in, one enormous jump. Built for triples.',diff:'Huge',lvl:7,pin:[.2,.78],
    sky:'linear-gradient(#ff7a3a 0%,#ffb070 40%,#ffe2b0 75%,#fff4dc 100%)',fog:0xffd8b0,hemi:[0xfff0e0,0xb08870,.64],sun:[0xffc890,.55,[-.6,.45,.4]],tex:'cord',tree:[0x2a3a3a,0x3a4a48],rng:0xf0c8b0}
 };
-MAPS.resort={n:'Mt. Twelve Resort',zone:'Free Roam',d:'The whole mountain: 50 named trails, 7 terrain parks, cliff bands, a summit lodge, a base village and a working chairlift. Ride the lift or skip straight to the top.',diff:'Open world',lvl:1,pin:[0,.25],fr:1,
+MAPS.resort={n:'Blue Mountain',zone:'Free Roam',d:'Blue Mountain, Ontario: all 43 runs from the trail map, the glades, Badlands and Grove terrain parks, an L-Hill ski-cross course, the five high-speed six-person express lifts plus the Voyageur Quad and Graduate Triple, and the base village. Ride the lifts or click the map to spawn anywhere.',diff:'Open world',lvl:1,pin:[0,.25],fr:1,
   sky:'linear-gradient(#2a64c8 0%,#86b8f0 55%,#e9f3ff 100%)',fog:0xd8e8fa,hemi:[0xffffff,0x7f9fd8,.64],sun:[0xfff2dc,.52,[.45,.62,.45]],tex:'pow',tree:[0x1d4a35,0x2a6a4a],rng:0xffffff};
 const MODES={battle:{n:'Trick Battle',i:'⚔️',d:'You vs 3 riders. Top score wins.'},free:{n:'Freeride',i:'🎿',d:'Solo run for a high score.'},time:{n:'Time Trial',i:'⏱️',d:'Fastest to the finish line.'}};
 

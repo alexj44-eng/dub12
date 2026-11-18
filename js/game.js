@@ -27,13 +27,17 @@ function initRiders(){
 let riders=[],mode='lobby',curMap='park',curMode='battle',endShown=false,paused=false,menuKind=null,camD={x:0,z:1},feed=[],hudT=0,st=null,bailT=0;
 function spawn(r,x){Object.assign(r,{x,z:260,y:hAt(x,260),vx:0,vz:150,vy:0,vyG:0,mode:'ground',head:0,steer:0,pitch:0,spin:0,sv:0,fv:0,roll:0,yo:0,comp:0,bp:0,butter:null,butT:0,
   sw:false,swT:false,fPrev:0,tilt:0,flipAcc:0,spinAcc:0,airT:0,grabT:0,grabs:{},grab:null,crashT:0,rail:null,grindT:0,charge:0,ry:0,fin:false,time:0,score:0,mult:1,
-  wind:0,bal:0,balV:0,ryT:0,railSide:false,press:null,pressT:0,swaps:0,spinOn:0,landQ:null,_tr:null});if(r.bot)r.bot.plan=null;}
+  wind:0,bal:0,balV:0,ryT:0,railSide:false,press:null,pressT:0,swaps:0,spinOn:0,landQ:null,_tr:null,bsp:0,bdeg:0,hsk:0,hsd:1});if(r.bot)r.bot.plan=null;}
 function popup(n,pt,bail,mu){if(!save.set.popups&&!bail)return;const e=$('pop');e.className=bail?'bail':'';e.children[0].textContent=n;e.children[1].textContent=pt?'+'+pt.toLocaleString()+(mu>1?'  (x'+mu+')':''):'';void e.offsetWidth;e.classList.add('go');}
 function say(r,n,pt,bail){if(r===p)popup(n,pt,bail,r.mult);else if(pt){feed.push({t:4.5,s:r.name+' · '+n+' +'+pt.toLocaleString()});if(feed.length>3)feed.shift();}}
 function award(r,n,pts){pts=Math.round(pts/10)*10*r.mult;r.score+=pts;say(r,n,pts);r.mult=Math.min(r.mult+1,8);}
-function endButter(r){if(r.butter){if(r.butT>.4)award(r,r.butter+' Butter',r.butT*300);r.butter=null;r.butT=0;}}
+function endButter(r){if(r.butter){
+    if(Math.abs(r.bsp||0)>Math.PI/2){r.bsp-=Math.sign(r.bsp)*Math.PI;r.sw=!r.sw;r.bdeg=(r.bdeg||0)+180;}   // finish a half-done rotation
+    const deg=r.bdeg||0;
+    if(deg>=180)award(r,r.butter+' Butter '+deg,r.butT*300+deg*4);else if(r.butT>.4)award(r,r.butter+' Butter',r.butT*300);
+    r.butter=null;r.butT=0;r.bdeg=0;}}
 // pre-wind: steering while you load the jump stores rotation that releases at take-off
-function startAir(r){endButter(r);r.mode='air';r.airT=0;r.flipAcc=0;r.spinAcc=0;r.grabT=0;r.grabs={};r.grab=null;r.charge=0;r.fv=0;r.swT=r.sw;
+function startAir(r){endButter(r);r.hsk=0;r.bsp=0;r.mode='air';r.airT=0;r.flipAcc=0;r.spinAcc=0;r.grabT=0;r.grabs={};r.grab=null;r.charge=0;r.fv=0;r.swT=r.sw;
   const ST=r.stat||[3,3,3];r.sv=r.wind*SPIN*(1+.06*(ST[2]-3))*(r===p?save.set.rot:1);r.wind=0;r.landQ=null;}
 function scoreTrick(r,suffix,pen){pen=pen||1;
   const flips=Math.round(Math.abs(r.flipAcc)/(Math.PI*2)),spins=Math.round(Math.abs(r.spinAcc)/Math.PI)*180;
@@ -78,7 +82,7 @@ function railName(r){const R=r.rail,sw=Math.abs(norm(r.ryT))>2.5;
 function leaveRail(r,pop){const gt=r.grindT,ry=r.ry,R=r.rail;r.vy=r.vyG+pop;startAir(r);
   award(r,railName(Object.assign({},r,{rail:R})),gt*520*(r.railSide?1.15:1)*(r.press&&r.pressT>.35?1.3:1)+r.spinOn*1.6+r.swaps*260+(R.h>40?400:0));
   r.rail=null;r.ry=0;r.yo+=ry;r.head=0;r.bp=0;}
-const bodyYaw=r=>r.head+(r.sw?Math.PI:0)+r.spin+r.ry+r.yo;
+const bodyYaw=r=>r.head+(r.sw?Math.PI:0)+r.spin+r.ry+r.yo+(r.bsp||0)+(r.hsk||0)*1.25*(r.hsd||1);
 
 function step(r,dt){
   const I=r.inp;
@@ -95,7 +99,7 @@ function step(r,dt){
     const e=2,gx=(hAt(r.x+e,r.z)-hAt(r.x-e,r.z))/(2*e),gz=(hAt(r.x,r.z+e)-hAt(r.x,r.z-e))/(2*e),den=1+gx*gx+gz*gz;
     // carving: tighter turns at low speed, longer arcs at speed; edges grip unless you're braking into a skid
     const sp0=Math.hypot(r.vx,r.vz),turnK=TURN*(.62+.5*Math.min(1,240/Math.max(80,sp0)))*(r.charge>0?.3:1);
-    r.steer+=((ctl?I.a-I.d:0)-r.steer)*Math.min(1,dt*7);r.head=clampH(r.head+r.steer*turnK*dt);
+    r.steer+=((ctl?I.a-I.d:0)-r.steer)*Math.min(1,dt*7);r.head=clampH(r.head+r.steer*turnK*(r.butter?.2:1)*dt);  // while buttering, A/D spins instead of carving
     const fx=Math.sin(r.head),fz=Math.cos(r.head),lx=fz,lz=-fx;
     r.vx-=G*gx/den*dt;r.vz-=G*gz/den*dt;
     let vF=r.vx*fx+r.vz*fz,vL=r.vx*lx+r.vz*lz;vL*=Math.exp(-(I.s&&ctl?3.2:9)*dt);
@@ -107,12 +111,19 @@ function step(r,dt){
     if(atBase){const k=Math.exp(-dt*3*Math.min(1,(r.z-map.stopZ)/120));vF*=k;vL*=k;} // run-out at the bottom of the resort
     r.vx=vF*fx+vL*lx;r.vz=vF*fz+vL*lz;
     if(bt){r.butter=bt;r.butT+=dt;if(r===p)st.butterT+=dt;}else endButter(r);
+    // butter spins: pressing nose/tail and steering pivots the skis on the snow, 180 at a time
+    if(bt&&ctl&&(I.a||I.d)){r.bsp+=(I.a-I.d)*5.4*dt;if(Math.abs(r.bsp)>=Math.PI){r.bsp-=Math.sign(r.bsp)*Math.PI;r.sw=!r.sw;r.bdeg+=180;if(r===p)sfx('ui');}}
+    else if(!bt)r.bsp*=Math.exp(-dt*12);
+    // hockey stop: brake hard at speed and the skis swing sideways, rider leans into it, snow sprays
+    const hsT=ctl&&I.s&&sp>140&&!bt?1:0;if(hsT&&r.hsk<.05)r.hsd=r.steer>.1?1:r.steer<-.1?-1:(r.hsd||1);
+    r.hsk+=(hsT-r.hsk)*Math.min(1,dt*(hsT?9:5));
+    if(r.hsk>.4&&sp>80)for(let k=0;k<2;k++)spray(r.x+(Math.random()-.5)*16,r.y+1,r.z+(Math.random()-.5)*10,(r.vx*.25)+(Math.random()-.5)*120,90+Math.random()*200,r.vz*.35,.35+Math.random()*.35);
     // ground 180 to/from switch
     if(ctl&&I.f&&!r.fPrev){r.sw=!r.sw;r.yo-=Math.PI;if(r.butter){award(r,'Butter 180',300);}else say(r,r.sw?'Switch':'Regular',0);}
     r.fPrev=I.f;
     const bsign=r.sw?-1:1;
     r.bp+=((bt?(bt==='Nose'?.36:-.36):0)-r.bp)*Math.min(1,dt*9);
-    r.roll+=(r.steer*Math.min(1,sp/400)*.5-r.roll)*Math.min(1,dt*7);
+    r.roll+=(r.steer*Math.min(1,sp/400)*.5-r.hsk*.32*r.hsd-r.roll)*Math.min(1,dt*7);
     if(r.crashT>0)r.pitch+=11*dt;else r.pitch+=norm(bsign*gPitch(r.x,r.z,fx,fz)-r.pitch)*Math.min(1,dt*12);
     if(pop){r.vy=(r.vyG>0?r.vyG*.8:r.vyG)+pop;startAir(r);puff(r,8);return;}
     const lim=map.lim||map.hw+240,nx=Math.max(-lim,Math.min(lim,r.x+r.vx*dt)),nz=r.z+r.vz*dt,gh=hAt(nx,nz),fy=r.y+r.vyG*dt-.5*G*dt*dt;
@@ -234,7 +245,7 @@ function snowUpdate(dt){const lv=save.set.snow;snow.visible=lv>0;if(!lv)return;s
 function place(r,dt){const R=r.sk.root;r.sk.head.scale.setScalar((save.set.bighead?1.55:1)*(r.sk.headS||1));R.scale.setScalar(r.sk.hs);R.position.set(r.x,r.y+.2,r.z);R.rotation.set(0,bodyYaw(r),0);
   r.sk.flipG.rotation.set(r.pitch+r.bp,0,-r.roll*(r.sw?-1:1)+r.tilt*Math.sin(r.pitch));
   const g=r.mode==='ground',tuck=g&&r.inp.w&&!r.charge&&!r.fin&&r.crashT<=0;
-  if(r.mode==='lift'){r.sk.flipG.rotation.set(0,0,0);r.sk.pose({crouch:1,idle:true},dt);return;}
+  if(r.mode==='lift'){r.sk.flipG.rotation.set(0,0,0);r.sk.pose({sit:true},dt);return;}
   r.sk.pose({crouch:(g?(r.charge>0?.35+.65*r.charge:tuck?.8:.3):r.mode==='rail'?.45:.3)+r.comp*.5,tuck,air:r.mode==='air'&&r.airT>.12,grab:r.grab,steer:r.steer*(r.sw?-1:1),look:r.sw&&r.mode!=='air'?.85:0},dt);}
 const fmt=t=>{const m=(t/60)|0,s=t-m*60;return m+':'+(s<10?'0':'')+s.toFixed(2);};
 function hud(dt){
@@ -259,8 +270,9 @@ function drawRun(dt){
   sun.position.set(p.x+sunDir.x*1800,p.y+sunDir.y*1800,p.z+sunDir.z*1800);sun.target.position.set(p.x,p.y,p.z+150);sun.target.updateMatrixWorld();
   const sp=Math.hypot(p.vx,p.vz);let tx=sp>60?p.vx/sp:Math.sin(p.head),tz=sp>60?p.vz/sp:Math.cos(p.head);if(p.mode==='lift'){tx=-.35;tz=-1;}else if(tz<.25){tz=.25;const n=Math.hypot(tx,tz);tx/=n;tz/=n;}
   const k=1-Math.exp(-dt*3.2);camD.x+=(tx-camD.x)*k;camD.z+=(tz-camD.z)*k;const n=Math.hypot(camD.x,camD.z)||1;camD.x/=n;camD.z/=n;
-  const VW=save.set.view,Z=save.set.zoom;let cx,cy,cz,kk=1-Math.exp(-dt*9),ky=1-Math.exp(-dt*6);p.sk.head.visible=VW!=='first';
-  if(VW==='first'){p.sk.head.getWorldPosition(_hp);cx=_hp.x;cy=_hp.y+3;cz=_hp.z;kk=ky=1;}
+  const VW=save.set.view,Z=save.set.zoom;let cx,cy,cz,kk=1-Math.exp(-dt*9),ky=1-Math.exp(-dt*6);if(p.sk.firstPerson)p.sk.firstPerson(VW==='first');else p.sk.head.visible=VW!=='first';
+  // first person: eyes just in front of the (hidden) head, looking where you're travelling
+  if(VW==='first'){p.sk.head.getWorldPosition(_hp);cx=_hp.x+camD.x*3;cy=_hp.y+2;cz=_hp.z+camD.z*3;kk=ky=1;}
   else if(VW==='side'){const px=camD.z,pz=-camD.x;cx=p.x+px*230*Z-camD.x*70;cz=p.z+pz*230*Z-camD.z*70;cy=Math.max(p.y+45*Z,hAt(cx,cz)+30);}
   else if(VW==='drone'){cx=p.x-camD.x*120*Z;cz=p.z-camD.z*120*Z;cy=p.y+300*Z;}
   else{const back=(150+Math.min(50,sp*.05))*Z;cx=p.x-camD.x*back;cz=p.z-camD.z*back;cy=Math.max(p.y+72*Z,hAt(cx,cz)+40);}
@@ -273,7 +285,7 @@ function drawRun(dt){
   const fv=save.set.fov-2+Math.min(16,sp*.018);if(Math.abs(cam.fov-fv)>.2){cam.fov+=(fv-cam.fov)*Math.min(1,dt*4);cam.updateProjectionMatrix();}
   const mg=runG.userData.mtn;mg.position.set(cam.position.x*.95,cam.position.y-3700,cam.position.z+17000);
   const ch=$('charge');ch.style.opacity=p.charge>0?1:0;ch.firstChild.style.width=(p.charge*100)+'%';
-  fxRun(dt);updateLift(dt);if(map.fr)updateLod();present(scene,cam,dt);
+  fxRun(dt);updateLift(dt);if(map.fr){updateLod();updateResortLifts(dt);}present(scene,cam,dt);
 }
 
 /* ---------- flow ---------- */
