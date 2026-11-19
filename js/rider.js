@@ -24,7 +24,7 @@ function loadAssets(url,onDone,onErr){
   // the uncompressed backup in assets/raw/ is used instead. The decoder is served from the site itself (no CDN needed).
   if(U.DRACOLoader){const D=new U.DRACOLoader();D.setDecoderPath(window.DUB12_DRACO||'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/gltf/');L.setDRACOLoader(D);}
   const V=window.DUB12_V?'?v='+window.DUB12_V:'',wait=ms=>new Promise(r=>setTimeout(r,ms));
-  const getBuf=async(url,tries)=>{for(let i=0;i<tries;i++){try{const ctl=window.AbortController?new AbortController():null,t=setTimeout(()=>ctl&&ctl.abort(),25000);
+  const getBuf=async(url,tries,ms)=>{for(let i=0;i<tries;i++){try{const ctl=window.AbortController?new AbortController():null,t=setTimeout(()=>ctl&&ctl.abort(),ms||25000);
       const r=await fetch(url+(i?(url.includes('?')?'&':'?')+'r='+Date.now():''),{signal:ctl?ctl.signal:undefined,cache:i?'reload':'default'});clearTimeout(t);
       if(!r.ok)throw new Error('HTTP '+r.status);const b=await r.arrayBuffer();if(b.byteLength<1000)throw new Error('short file');return b;}
     catch(e){console.warn('load',url,'attempt',i+1,e);await wait(500*(i+1));}}return null;};
@@ -36,9 +36,14 @@ function loadAssets(url,onDone,onErr){
   // switches to its uncompressed backup, and optional packs are skipped if they still aren't ready after ~45 s in total
   const NAMES=['models','extra','gear','env'],dl={};NAMES.forEach(n=>{dl[n]=getBuf('assets/'+n+'.glb'+V,2);});
   const parseT=(buf,ms)=>Promise.race([parse(buf),wait(ms).then(()=>null)]);
-  const one=async(n,i)=>{const opt=n!=='models';if(opt&&performance.now()-t0>45000){console.warn('skipping optional pack',n);return null;}
-    step('decoding '+(i+1)+'/4 ('+n+')…');let b=await dl[n],g=b&&await parseT(b,15000);
-    if(!g){console.warn('using uncompressed backup for',n);step('using backup copy of '+n+'…');const rb=await getBuf('assets/raw/'+n+'.glb'+V,opt?1:3);g=rb&&await parseT(rb,opt?15000:60000);}
+  // crash recovery: we note which pack is being decoded; if the browser tab crashes mid-decode (seen in Brave), the next load
+  // finds the note and skips the compressed copy of that pack, loading the plain backup instead. Remembered for next visits too.
+  const LS={get:k=>{try{return localStorage.getItem(k);}catch(e){return null;}},set:(k,v)=>{try{v===null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}}};
+  const crashed=LS.get('dub12_decoding');if(crashed){LS.set('dub12_plain_'+crashed,'1');LS.set('dub12_decoding',null);console.warn('previous load crashed while decoding',crashed);}
+  const one=async(n,i)=>{const opt=n!=='models';if(opt&&performance.now()-t0>150000){console.warn('skipping optional pack',n);return null;}
+    const plain=LS.get('dub12_plain_'+n)==='1';let b=null,g=null;
+    if(!plain){step('decoding '+(i+1)+'/4 ('+n+')…');LS.set('dub12_decoding',n);b=await dl[n];g=b&&await parseT(b,15000);LS.set('dub12_decoding',null);}
+    if(!g){console.warn('using uncompressed backup for',n);step((plain?'loading ':'using backup copy of ')+n+' ('+(i+1)+'/4)…');const rb=await getBuf('assets/raw/'+n+'.glb'+V,2,120000);g=rb&&await parseT(rb,opt?15000:60000);}
     return g;};
   (async()=>{const out={};for(let i=0;i<NAMES.length;i++){out[NAMES[i]]=await one(NAMES[i],i);if(i===0&&!out.models){onErr&&onErr('models');return;}}
     take(out.models);if(out.env)take(out.env);if(out.gear)prep(out.gear);if(out.extra)prep(out.extra);step('starting game…');onDone();})()
