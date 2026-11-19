@@ -5,6 +5,7 @@ const A={};                       // Blender parts by name
 function part(n){const o=A[n].clone(true);o.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=false;}});return o;}
 function whiteCols(geo){const n=geo.attributes.position.count,a=new Float32Array(n*3).fill(1);geo.setAttribute('color',new U.BufferAttribute(a,3));return geo;}
 function loadAssets(url,onDone,onErr){
+  if(!U.GLTFLoader){onErr&&onErr('three.js loaders missing');return;}
   const L=new U.GLTFLoader(),take=g=>{g.scene.traverse(o=>{if(o.parent===g.scene)A[o.name]=o;});
     for(const k in A){A[k].position.set(0,0,0);A[k].rotation.set(0,0,0);A[k].scale.set(1,1,1);}};
   const b64=s=>{const bin=atob(s),buf=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);return buf.buffer;};
@@ -18,10 +19,20 @@ function loadAssets(url,onDone,onErr){
   const env=()=>{if(!window.DUB12_ENV_GLB){gear();return;}const e=b64(window.DUB12_ENV_GLB);window.DUB12_ENV_GLB=null;L.parse(e,'',g=>{take(g);gear();},err=>{console.warn('env pack failed',err);gear();});};
   const got=g=>{take(g);env();};
   if(window.DUB12_GLB){const buf=b64(window.DUB12_GLB);window.DUB12_GLB=null;L.parse(buf,'',got,onErr);return;}
-  // hosted site: small Draco-compressed binary packs (tools/compress.py), fetched in parallel and cached by the browser
-  if(U.DRACOLoader){const D=new U.DRACOLoader();D.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/gltf/');L.setDRACOLoader(D);}
-  const fetchGlb=n=>new Promise(res=>L.load('assets/'+n+'.glb'+(window.DUB12_V?'?v='+window.DUB12_V:''),g=>res(g),undefined,e=>{console.warn('pack',n,'failed',e);res(null);}));
-  Promise.all(['models','env','gear','extra'].map(fetchGlb)).then(([m,e,g,x])=>{if(!m){onErr&&onErr('models');return;}take(m);if(e)take(e);
+  // hosted site: small Draco-compressed binary packs (tools/compress.py), fetched in parallel and cached by the browser.
+  // Hardened: every pack is retried (with a cache-bypassing reload) and, if the compressed copy still can't be read,
+  // the uncompressed backup in assets/raw/ is used instead. The decoder is served from the site itself (no CDN needed).
+  if(U.DRACOLoader){const D=new U.DRACOLoader();D.setDecoderPath(window.DUB12_DRACO||'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/gltf/');L.setDRACOLoader(D);}
+  const V=window.DUB12_V?'?v='+window.DUB12_V:'',wait=ms=>new Promise(r=>setTimeout(r,ms));
+  const getBuf=async(url,tries)=>{for(let i=0;i<tries;i++){try{const ctl=window.AbortController?new AbortController():null,t=setTimeout(()=>ctl&&ctl.abort(),25000);
+      const r=await fetch(url+(i?(url.includes('?')?'&':'?')+'r='+Date.now():''),{signal:ctl?ctl.signal:undefined,cache:i?'reload':'default'});clearTimeout(t);
+      if(!r.ok)throw new Error('HTTP '+r.status);const b=await r.arrayBuffer();if(b.byteLength<1000)throw new Error('short file');return b;}
+    catch(e){console.warn('load',url,'attempt',i+1,e);await wait(500*(i+1));}}return null;};
+  const parse=buf=>new Promise(res=>{let done=false;const t=setTimeout(()=>{if(!done){done=true;console.warn('parse timeout');res(null);}},20000);
+    try{L.parse(buf,'',g=>{if(!done){done=true;clearTimeout(t);res(g);}},e=>{if(!done){done=true;clearTimeout(t);console.warn('parse failed',e);res(null);}});}catch(e){done=true;clearTimeout(t);res(null);}});
+  const loadPack=async n=>{let b=await getBuf('assets/'+n+'.glb'+V,2),g=b&&await parse(b);
+    if(!g){console.warn('using uncompressed backup for',n);b=await getBuf('assets/raw/'+n+'.glb'+V,3);g=b&&await parse(b);}return g;};
+  Promise.all(['models','env','gear','extra'].map(loadPack)).then(([m,e,g,x])=>{if(!m){onErr&&onErr('models');return;}take(m);if(e)take(e);
     if(g)prep(g);if(x)prep(x);onDone();}).catch(err=>{console.error('asset load failed',err);onErr&&onErr(err);});
 }
 const mname=m=>(m.name||'').replace(/\.\d+$/,'');
