@@ -7,6 +7,13 @@ const RAR={common:{n:'Common',c:'#9aa7c2',p:300},rare:{n:'Rare',c:'#3aa0ff',p:80
 /* ---------- ski top sheets ---------- */
 function skiText(g,w,h,txt,col,y,size){g.save();g.translate(w/2,y);g.rotate(-Math.PI/2);g.fillStyle=col;g.font=(size||26)+'px Bungee,Impact,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(txt,0,0);g.restore();}
 const SKI_ART={
+ bigtext(g,w,h){const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#1f4fd6');gr.addColorStop(1,'#0b2a8a');g.fillStyle=gr;g.fillRect(0,0,w,h);
+   g.strokeStyle='rgba(255,255,255,.35)';g.lineWidth=1.2;for(let i=0;i<9;i++){g.beginPath();g.moveTo(0,h*.55+i*18);g.bezierCurveTo(w*.3,h*.5+i*14,w*.7,h*.62+i*12,w,h*.58+i*16);g.stroke();}
+   g.fillStyle='#e9eef8';g.beginPath();g.moveTo(0,h*.36);g.lineTo(w,h*.3);g.lineTo(w,h*.46);g.lineTo(0,h*.5);g.fill();
+   skiText(g,w,h,'DUB12','#0b2a8a',h*.42,30);skiText(g,w,h,'YARDLINE','#ffffff',h*.18,22);skiText(g,w,h,'/01','#9fc0ff',h*.86,16);},
+ bigtextw(g,w,h){g.fillStyle='#eef1f5';g.fillRect(0,0,w,h);g.fillStyle='#111';g.fillRect(0,h*.7,w,h*.3);
+   g.strokeStyle='rgba(0,0,0,.25)';g.lineWidth=1;for(let i=0;i<14;i++){g.beginPath();g.moveTo(0,i*22);g.lineTo(w,i*22+30);g.stroke();}
+   skiText(g,w,h,'DUB12','#111',h*.38,32);skiText(g,w,h,'PARK','#e3262f',h*.84,20);},
  topo(g,w,h){const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#0b3d4a');gr.addColorStop(1,'#12a0a0');g.fillStyle=gr;g.fillRect(0,0,w,h);
    g.strokeStyle='rgba(255,255,255,.55)';g.lineWidth=1.3;for(let k=0;k<26;k++){g.beginPath();for(let x=-4;x<=w+4;x+=4){const y=k*22-20+Math.sin(x*.09+k*.7)*9+Math.sin(x*.21+k)*4;x<0?g.moveTo(x,y):g.lineTo(x,y);}g.stroke();}
    g.fillStyle='#0b3d4a';g.fillRect(12,170,w-24,180);skiText(g,w,h,'NORTHWALL','#fff',260);},
@@ -48,19 +55,31 @@ const ITEMS=[];const IDX={};
 function item(o){o.rarity=o.rarity||'common';o.price=o.price===undefined?RAR[o.rarity].p:o.price;o.src=o.src||'shop';ITEMS.push(o);IDX[o.id]=o;return o;}
 /* jackets: two puffer styles, coloured by you (body colour + stripe colour) */
 const JCOL=[['Black',0x141416],['Charcoal',0x3a3d44],['Slate',0x5d6673],['White',0xeceef1],['Signal Red',0xd8343b],['Burnt Orange',0xe0622a],['Mustard',0xd9a526],
- ['Lime',0x9fd23a],['Forest',0x2f5e3c],['Teal',0x1f9c90],['Sky',0x4aa3e6],['Navy',0x1d2b55],['Purple',0x6d4ab8],['Pink',0xe87aa8],['Sand',0xc9b18a],['Olive',0x5f6640]];
+ ['Lime',0x9fd23a],['Forest',0x2f5e3c],['Teal',0x1f9c90],['Sky',0x4aa3e6],['Navy',0x1d2b55],['Purple',0x6d4ab8],['Pink',0xe87aa8],['Sand',0xc9b18a],['Olive',0x5f6640],['Burgundy',0x6b1a2b],['Wine',0x4a1220],['Cream',0xe8e0cc]];
 // pole colours: [name, colour, metallic]
 const POLECOL=[['Silver',0xcfd6e4,1],['Black',0x16171b,0],['White',0xeceef1,0],['Gold',0xd8b04a,1],['Red',0xd8343b,0],['Orange',0xe0622a,0],['Yellow',0xf2c62a,0],['Lime',0x9fd23a,0],
-  ['Teal',0x1f9c90,0],['Sky',0x4aa3e6,0],['Blue',0x2453c9,1],['Purple',0x6d4ab8,0],['Pink',0xe87aa8,0],['Gunmetal',0x4a4f58,1]];
+  ['Teal',0x1f9c90,0],['Sky',0x4aa3e6,0],['Blue',0x2453c9,1],['Purple',0x6d4ab8,0],['Pink',0xe87aa8,0],['Gunmetal',0x4a4f58,1],['Burgundy',0x6b1a2b,0]];
 item({id:'j_puffer',cat:'jacket',n:'Stripe Puffer',c:0x141416,a:0x3a3d44,t:0x141416,rarity:'common',src:'starter',stripe:true});
+item({id:'j_twotone',cat:'jacket',n:'Two-Tone Puffer',c:0x141416,a:0x3a3d44,t:0x141416,rarity:'common',src:'starter',stripe:true,two:1});
+item({id:'j_burg',cat:'jacket',n:'Burgundy Puffer',c:0x6b1a2b,a:0xe8e0cc,t:0x6b1a2b,rarity:'common',src:'starter',stripe:true,jc:16,sc:18});
+item({id:'j_green',cat:'jacket',n:'Forest Puffer',c:0x2f5e3c,a:0x141416,t:0x2f5e3c,rarity:'common',src:'starter',stripe:true,jc:8,sc:0});
+item({id:'j_hoodie',cat:'jacket',n:'Hoodie',c:0x3a3d44,a:0xffffff,t:0x3a3d44,rarity:'common',src:'starter',stripe:true,top:'hoodie',jc:1,sc:3});
+item({id:'j_ls',cat:'jacket',n:'Long Sleeve Tee',c:0xeceef1,a:0x141416,t:0xeceef1,rarity:'common',src:'starter',stripe:true,top:'ls',jc:3,sc:0});
+item({id:'j_tee',cat:'jacket',n:'T-Shirt',c:0x141416,a:0xeceef1,t:0x141416,rarity:'common',src:'starter',stripe:true,top:'tee',jc:0,sc:3});
+item({id:'j_bib',cat:'jacket',n:'Vest + Waffle Shirt',c:0x141416,a:0x3a3d44,t:0x141416,rarity:'common',src:'starter',stripe:true,bib:1,jc:8,sc:4});
 item({id:'j_clean',cat:'jacket',n:'Clean Puffer',c:0x141416,a:0x141416,t:0x141416,rarity:'common',src:'starter',stripe:false});
 [
- ['p_triple','Black Baggies',0x18181c,null,'common','starter'],['p_navy','Navy',0x1b2247,null,'common','starter'],['p_black','Charcoal',0x24262e,null,'common','starter'],['p_tan','Desert Tan',0xb59a6e,null,'common'],
- ['p_white','Whiteout',0xe9ecf2,null,'rare'],['p_olive','Olive',0x58613f,null,'common'],['p_red','Fire Red',0xc62f2f,null,'rare'],
+ ['p_triple','Black Baggies',0x18181c,null,'common','starter'],['p_flare_cream','Cream Flares',0xe8e0cc,null,'common','starter'],['p_flare_burg','Burgundy Flares',0x5e1726,null,'common','starter'],['p_flare_denim','Denim Flares',0x2f4a78,null,'rare'],['p_navy','Navy',0x1b2247,null,'common','starter'],['p_black','Charcoal',0x24262e,null,'common','starter'],['p_tan','Desert Tan',0xb59a6e,null,'common'],
+ ['p_white','Whiteout',0xe9ecf2,null,'rare'],['p_olive','Olive',0x58613f,null,'common'],['p_burg','Burgundy',0x5e1726,null,'common','starter'],['p_red','Fire Red',0xc62f2f,null,'rare'],
  ['p_camo','Camo Cargo',0x4b5a3a,'camo','epic',null,0x7a6a48],['p_plaid','Flannel',0x2f4f8f,'plaid','epic',null,0x111a2e],['p_snowcamo','Arctic Cargo',0xdfe6ee,'camo','epic',null,0x9fb0c4],
  ['p_pj','PJ Pants',0xb3261e,'plaid','rare',null,0x1d5a2a],['p_pj2','Cozy PJs',0x2f4f8f,'check','rare',null,0xdfe6ee],['p_pjcamo','Camo PJs',0x6b7a55,'camo','rare',null,0x3a4530],
  ['p_splat','Drip',0x15151c,'splat','legendary','pass',0xff3df0],['p_check','Checkmate',0xf4f4f0,'check','epic','pass',0x151515]
-].forEach(a=>item({id:a[0],cat:'pants',n:a[1],c:a[2],pat:a[3],rarity:a[4],src:a[5]||'shop',p2:a[6]}));
+].forEach(a=>item({id:a[0],cat:'pants',n:a[1],c:a[2],pat:a[3],rarity:a[4],src:a[5]||'shop',p2:a[6],flare:/triple|camo|plaid|flare/.test(a[0])?1:0}));
+// printed pants (original designs, drawn on the legs): race print with side stripe + number, cargo with pockets and tags
+item({id:'p_race',cat:'pants',n:'Race Print Pants',c:0x15161a,deco:'race',rarity:'common',src:'starter'});
+item({id:'p_race_w',cat:'pants',n:'Race Print White',c:0xe9ecf1,deco:'race',rarity:'rare'});
+item({id:'p_race_burg',cat:'pants',n:'Burgundy Sponsor Pants',c:0x6b1a2b,deco:'race',rarity:'common',src:'starter'});
+item({id:'p_cargo',cat:'pants',n:'Cargo Pants',c:0x2f3328,deco:'cargo',flare:1,rarity:'common',src:'starter'});
 [
  ['g_black','Stealth',0x17181d,0x2c2e36,'common','starter'],['g_red','Red Mitts',0xd8343b,0x1a1a1a,'common'],['g_tan','Leather',0x9a6a3c,0x5a3a1c,'rare'],
  ['g_mitt','Leather Mitts',0x7a4a26,0x3a2412,'rare'],['g_mitt_blk','Black Leather Mitts',0x1e1a18,0x6a4a2a,'epic'],['g_white','Snowblind',0xeeeeee,0x9fb0c4,'rare'],['g_neon','Hi-Vis',0xd7ff3a,0x1a1a1a,'epic'],['g_gold','Gilded',0xd9a531,0x5a3a10,'legendary','pass']
@@ -76,11 +95,11 @@ item({id:'h_park',cat:'helmet',n:'Park Lid Graphite',style:'park2',c:0x2e3238,a:
 item({id:'h_park_wht',cat:'helmet',n:'Park Lid White',style:'park2',c:0xeceef1,a:0x15161a,rarity:'rare'});
 item({id:'h_flash',cat:'helmet',n:'Chrome Flash',style:'park2',c:0xffffff,a:0x15161a,rarity:'legendary',src:'starter',liv:1});
 [
- ['o_none','No Goggles','none',0,0,0,'common','starter'],['o_classic','Classic White','frame',0xf2f2f0,0xc8921f,0xf2f2f0,'common','starter'],['o_fire','Fire Iridium','frame',0x111111,0xff7a1a,0x111111,'common','starter'],['o_ice','Ice Blue','frame',0xffffff,0x58d7ff,0xffffff,'common','starter'],
+ ['o_clear','Clear Lens','round',0x15161a,0xdfe9ef,0xf4f4f2,'common','starter'],['o_park_yellow','Park Goggle Gold','round',0xf2f2f0,0xc9a51a,0xe8e8e8,'common','starter'],['o_round_chrome','Park Goggle Chrome','round',0x15161a,0xcfd6e4,0x15161a,'common','starter'],['o_round_blue','Park Goggle Sapphire','round',0xf2f2f0,0x2a6bff,0xf2f2f0,'rare'],['o_round_fire','Park Goggle Fire','round',0x111111,0xff7a1a,0x111111,'rare'],['o_clear_blk','Clear Lens Black','rimless',0x141416,0xdfe9ef,0x141416,'rare'],['o_none','No Goggles','none',0,0,0,'common','starter'],['o_classic','Classic White','frame',0xf2f2f0,0xc8921f,0xf2f2f0,'common','starter'],['o_fire','Fire Iridium','frame',0x111111,0xff7a1a,0x111111,'common','starter'],['o_ice','Ice Blue','frame',0xffffff,0x58d7ff,0xffffff,'common','starter'],
  ['o_chrome','Chrome','frame',0x222222,0xd8dde6,0x222222,'common'],['o_rose','Rose','frame',0x2b1b3d,0xff5d8f,0x2b1b3d,'rare'],['o_jade','Jade','rimless',0x111111,0x39d98a,0x111111,'rare'],
  ['o_gold','Gold Rush','rimless',0x6b4a2e,0xffd23f,0x6b4a2e,'epic'],['o_violet','Violet Haze','rimless',0xffffff,0x8f5bff,0xffffff,'epic'],['o_void','Void','frame',0x15151a,0x15151a,0x15151a,'rare'],
  ['o_prism','Prism','rimless',0x111111,0xff3df0,0x39ff9e,'legendary'],['o_sunrise','Sunrise','rimless',0xff7a1a,0xffb03f,0xff4d6d,'legendary','pass']
-].forEach(a=>item({id:a[0],cat:'goggles',n:a[1],style:a[2],f:a[3],l:a[4],s:a[5],rarity:a[6],src:a[7]||'shop'}));
+].forEach(a=>item({id:a[0],cat:'goggles',n:a[1],style:a[2],f:a[3],l:a[4],s:a[5],rarity:a[6],src:a[7]||'shop',clear:a[0].startsWith('o_clear')}));
 [
  ['b_free_blk','Park Pro','free',0x24262e,0x3a3d48,'common','starter'],['b_free_wht','Park Pro White','free',0xeeeeee,0x2a2a30,'rare'],['b_free_lime','Park Pro Lime','free',0xb5e61d,0x1a1a20,'rare'],
  ['b_race_red','Race Plug','race',0xd8343b,0x1a1a20,'rare'],['b_race_blu','Race Plug Blue','race',0x1d6fd8,0xeeeeee,'epic'],
@@ -93,12 +112,12 @@ item({id:'h_flash',cat:'helmet',n:'Chrome Flash',style:'park2',c:0xffffff,a:0x15
  ['s_sunset','DRIFT CO. Daydream 112','sunset',0xff7a1a,'rare'],['s_splat','HALCYON Blackout 102','splatter',0x39ff9e,'rare'],['s_wood','PINELINE Timber 108','wood',0x2a4d3a,'rare'],
  ['s_glitch','STATIC Glitch 96','glitch',0x08d9d6,'epic'],['s_camo','FIELD UNIT Recon 100','camo',0x4b5a3a,'epic'],['s_check','CHEKR Grid 94','checker',0xff4d6d,'epic'],
  ['s_flames','INFERNO Hot Lap 99','flames',0xff7a1a,'legendary'],['s_aurora','POLARIS Night 104','aurora',0x3df0ff,'legendary','pass'],
- ['s_gold','DUB12 Gold Edition','gold',0xd9a531,'legendary','pass'],['s_retro','ALPENFUNK Retro 90','retro',0xe63946,'epic','pass'],
+ ['s_yard','YARDLINE Blue 01','bigtext',0x0b2a8a,'epic','starter'],['s_yardw','DUB12 Park Mono','bigtextw',0x111111,'rare'],['s_gold','DUB12 Gold Edition','gold',0xd9a531,'legendary','pass'],['s_retro','ALPENFUNK Retro 90','retro',0xe63946,'epic','pass'],
  ['s_rocket','VELOCITY Rocket 88','flames',0xff4d1a,'rare'],['s_pop','SPRING Pop 92','checker',0xffd23f,'rare'],['s_whirl','VORTEX Whirl 90','glitch',0xb36bff,'rare'],['s_apex','DUB12 Apex Pro','gold',0x111111,'legendary']
 ].forEach(a=>item({id:a[0],cat:'skis',n:a[1],art:a[2],base:a[3],rarity:a[4],src:a[5]||'shop'}));
 
 [
- ['m_none','No Mask','none',0,null,'common','starter'],['m_clava_blk','Black Balaclava','clava',0x16161a,null,'common','starter'],['m_gaiter_blk','Black Face Mask','gaiter',0x1a1a1e,null,'common','starter'],
+ ['m_none','No Mask','none',0,null,'common','starter'],['m_clava_blk','Black Balaclava','clava',0x16161a,null,'common','starter'],['m_gaiter_blk','Black Face Mask','gaiter',0x1a1a1e,null,'common','starter'],['m_neck_blk','Black Neck Warmer','neck',0x1a1a1e,null,'common','starter'],['m_neck_burg','Burgundy Neck Warmer','neck',0x6b1a2b,null,'common','starter'],['m_neck_plaid','Plaid Neck Warmer','neck',0x2f4f8f,'plaid','rare',null,0x111a2e],
  ['m_clava_wht','White Balaclava','clava',0xe8e8e4,null,'rare'],['m_clava_red','Red Balaclava','clava',0xb3261e,null,'rare'],['m_clava_camo','Camo Balaclava','clava',0x4b5a3a,'camo','epic',null,0x7a6a48],
  ['m_clava_snow','Arctic Balaclava','clava',0xdfe6ee,'camo','epic',null,0x9fb0c4],['m_gaiter_teal','Teal Face Mask','gaiter',0x2bb3a3,null,'rare'],['m_gaiter_plaid','Plaid Face Mask','gaiter',0x2f4f8f,'plaid','epic',null,0x111a2e],
  ['m_band_red','Red Bandana','bandana',0xc62f2f,'plaid','rare',null,0x6a1010],['m_band_camo','Camo Bandana','bandana',0x4b5a3a,'camo','rare',null,0x2f3a25],['m_clava_gold','Gold Balaclava','clava',0xd9a531,'gold','legendary','pass',0xfff1b8],
@@ -151,6 +170,8 @@ const MAPS={
    sky:'linear-gradient(#0a0c22 0%,#2a1f4f 55%,#6a3a6a 100%)',fog:0x2a2040,hemi:[0xb0a0ff,0x302848,.6],sun:[0xffd0a0,.35,[.4,.7,.2]],tex:'cord',tree:[0x0e1a33,0x162646],rng:0x403868,night:1},
  glacier:{n:'Glacier Bowl',zone:'Summit',d:'Wide-open ice-blue bowl with natural hits and rollers.',diff:'Big',lvl:6,pin:[-.32,.62],
    sky:'linear-gradient(#1a4fa0 0%,#6ab0f0 50%,#d8f0ff 100%)',fog:0xcfe8fb,hemi:[0xe8f6ff,0x6f9fd8,.68],sun:[0xffffff,.5,[.2,.9,.3]],tex:'pow',tree:[0x2a4a5a,0x3a6070],rng:0xe8f4ff,ice:1},
+ megapark:{n:'Mega Park',zone:'Upper Mountain',d:'The biggest park on the hill: four jump lines up to XXL, rail and box gardens, down-flat-downs, snow balls, a 22 ft superpipe and a quarterpipe finale.',diff:'Send',lvl:1,pin:[-.05,.55],
+   sky:'linear-gradient(#2a6fd0 0%,#8cc4ff 55%,#eef7ff 100%)',fog:0xdcecff,hemi:[0xffffff,0x8aa6d8,.66],sun:[0xffffff,.52,[.35,.8,.35]],tex:'cord',tree:[0x1d4a35,0x2a6a4a],rng:0xffffff},
  mega:{n:'Mega Ramp',zone:'Summit',d:'One tower drop-in, one enormous jump. Built for triples.',diff:'Huge',lvl:7,pin:[.2,.78],
    sky:'linear-gradient(#ff7a3a 0%,#ffb070 40%,#ffe2b0 75%,#fff4dc 100%)',fog:0xffd8b0,hemi:[0xfff0e0,0xb08870,.64],sun:[0xffc890,.55,[-.6,.45,.4]],tex:'cord',tree:[0x2a3a3a,0x3a4a48],rng:0xf0c8b0}
 };

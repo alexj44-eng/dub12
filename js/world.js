@@ -7,17 +7,17 @@ const norm=a=>{a%=Math.PI*2;if(a>Math.PI)a-=Math.PI*2;if(a<-Math.PI)a+=Math.PI*2
 const PAL=[0x3aa0ff,0xff4d6d,0xffd23f,0x39d98a,0xb36bff,0xff7a1a,0x58d7ff];
 function buildMap(id){
   const M={id,ys:[0],feat:[],rails:[],lips:[],trees:[],cliffs:[],pillows:[],stairs:[],decor:[],noise:0,hw:430};
-  if(id==='back'||id==='pillow')M.noise=1;if(id==='glacier')M.noise=2;if(id==='downtown')M.hw=270;
+  if(id==='back'||id==='pillow')M.noise=1;if(id==='glacier')M.noise=2;if(id==='downtown')M.hw=270;if(id==='megapark')M.hw=900;M.pipes=[];M.domes=[];
   const ys=M.ys;let y=0;const B=(id==='back'||id==='pillow')?.34:id==='glacier'?.3:.24;
   const X=()=>(ys.length-1)*S;
   const seg=(len,s0,s1)=>{if(s1===undefined)s1=s0;const n=Math.round(len/S);for(let i=0;i<n;i++){y+=(s0+(s1-s0)*(i+.5)/n)*S;ys.push(y);}};
   const drop=h=>{y+=h;ys.push(y);};
   const feature=(cx,hw,fn)=>{const i0=ys.length-1;fn();M.feat.push({i0,i1:ys.length-1,cx,hw,ew:80});};
-  const kicker=(cx,hw,lipLen,lipS,deck,table,landS,landLen,col,run)=>{seg(run===undefined?240:run,B);feature(cx,hw,()=>{const a=X();seg(lipLen,B,-lipS);if(col)M.lips.push({z1:a+lipLen*.3,z2:X(),cx,hw,col});
-    drop(deck);seg(table,.03);seg(90,.03,landS);seg(landLen,landS);seg(240,landS,B);});};
+  const kicker=(cx,hw,lipLen,lipS,deck,table,landS,landLen,col,run)=>{seg(run===undefined?420:run*1.5,B);feature(cx,hw,()=>{const a=X();seg(lipLen,B,-lipS);if(col)M.lips.push({z1:a+lipLen*.3,z2:X(),cx,hw,col});
+    drop(deck);seg(table,.03);(M.knuck=M.knuck||[]).push({z:X(),cx,hw});seg(90,.03,landS);seg(landLen,landS);seg(240,landS,B);});};
   // rails are built full size: ~1-1.5 m tall handrails, wide boxes (RS scales the authored heights)
   const RS=1.55,rail=(x,h,z1,z2,col,box,extra)=>M.rails.push(Object.assign({x,z1,z2,h:h*RS,box:!!box,col,w:box?34:19,arch:0},extra||{}));
-  const jib=(len,list,prof)=>{seg(260,B);const a=X();if(prof)prof();else seg(len*2,B);list.forEach(r=>rail(r.x,r.h,a,X(),r.col,r.box,r.arch?{arch:r.arch}:null));seg(200,B);};
+  const jib=(len,list,prof)=>{seg(420,B);const a=X();if(prof)prof();else seg(len*2,B);list.forEach(r=>rail(r.x,r.h,a,X(),r.col,r.box,r.arch?{arch:r.arch}:null));seg(360,B);};
   const pitch=()=>{seg(260,B,B+.18);seg(260,B+.18,B);};
   const cliff=h=>{feature(0,3000,()=>{seg(220,B,.08);M.cliffs.push({z:X(),h});drop(h);seg(60,.9,.75);seg(200+h*2,.75);seg(260,.75,B);});};
   const pillowStack=(n,h)=>{feature(0,3000,()=>{for(let k=0;k<n;k++){seg(80,B,.04);M.pillows.push({z:X(),h});drop(h);seg(70,.6);seg(40,.6,B);}});};
@@ -85,6 +85,25 @@ function buildMap(id){
     stairs(10,8,20,[{x:-80,h:28,col:0xff4d6d},{x:80,h:28,col:0x58d7ff}]);
     jib(0,[{x:-100,h:22,col:0xffd23f},{x:100,h:22,col:0x39d98a}],()=>{seg(160,.45);seg(160,.06);seg(160,.45);});
     stairs(7,9,22,[{x:0,h:26,col:0xff7a1a}]);
+  }else if(id==='megapark'){
+    // Mega Park: wide, long slope with every feature — 4 jump lines from medium to XXL, rail/box gardens, snow balls, a superpipe and a quarterpipe finale
+    const RC=[0xff4d6d,0xffd23f,0x39d98a,0x3aa0ff,0xb36bff,0xff7a1a];
+    seg(500,.7);seg(260,.7,B);
+    kicker(0,240,180,.62,45,200,.55,380,0x3aa0ff);
+    jib(520,[{x:-420,h:16,col:RC[0],box:1},{x:-250,h:24,col:RC[1]},{x:-80,h:14,col:RC[2],box:1},{x:80,h:22,col:RC[3],arch:40},{x:250,h:16,col:RC[4],box:1},{x:420,h:26,col:RC[5]}]);
+    kicker(0,260,240,.78,60,320,.62,540,0xffd23f);
+    // snow balls: big rounded domes to pop off, butter over or spin around
+    {seg(200,B);const a=X();seg(900,B);[[-420,a+180,70,46],[-150,a+330,90,58],[150,a+180,70,46],[420,a+330,90,58],[-300,a+640,110,72],[0,a+560,80,52],[300,a+640,110,72]].forEach(([x,z,R,H])=>M.domes.push({x,z,R,H}));}
+    jib(0,[{x:-300,h:22,col:RC[0]},{x:-100,h:14,col:RC[3],box:1},{x:100,h:14,col:RC[1],box:1},{x:300,h:22,col:RC[2]}],()=>{seg(170,.48);seg(220,.08);seg(170,.48);});   // down-flat-downs
+    pitch();kicker(0,280,280,.85,70,400,.66,680,0xff7a1a);
+    jib(700,[{x:-360,h:28,col:RC[4]},{x:-120,h:16,col:RC[5],box:1,arch:46},{x:120,h:26,col:RC[0]},{x:360,h:16,col:RC[3],box:1}]);
+    pitch();kicker(0,300,320,.95,90,520,.7,860,0xff4d6d);   // XXL step
+    // superpipe: 22 ft walls, flat bottom, long and steady
+    {seg(260,B,.3);const a=X();seg(3400,.3);M.pipes.push({z1:a,z2:X(),cx:0,flat:150,R:200,H:190});seg(260,.3,B);}
+    kicker(0,240,200,.66,50,260,.6,440,0x39d98a);
+    jib(600,[{x:-300,h:24,col:RC[1]},{x:0,h:30,col:RC[2]},{x:300,h:16,col:RC[0],box:1}]);
+    // quarterpipe finale across the run-out
+    {seg(400,.16);const a=X();seg(420,.16);M.pipes.push({z1:a,z2:X(),cx:0,flat:0,R:0,H:0,qp:1,qz:X(),qR:180,qH:150});}
   }else if(id==='mega'){
     seg(260,.4);seg(1100,1.2);
     feature(0,260,()=>{const a=X();seg(300,1.2,-1.4);M.lips.push({z1:a+165,z2:X(),cx:0,hw:260,col:0xff7a1a});drop(380);seg(100,.03);seg(90,.03,1.0);seg(2700,1.0);seg(500,1.0,B);});
@@ -102,7 +121,7 @@ function buildMap(id){
   // keep the chairlift corridor clear of trees
   M.lift=id!=='downtown'?-(M.hw+250):0;if(M.lift)M.trees=M.trees.filter(t=>Math.abs(t.x-M.lift)>95);
   // every tree is solid (edge trees too); park runs are fenced so you can't ride off the side
-  M.lim=['park','rails','night','mega','glacier'].includes(id)?M.hw+14:M.hw+240;
+  M.lim=['park','rails','night','mega','megapark','glacier'].includes(id)?M.hw+14:M.hw+240;
   M.buckets={};M.trees.forEach(t=>{t.y=hAt(t.x,t.z);t.rad=10*t.s+4;t.h=70*t.s;addCol(M,t);});
   const cl01=v=>Math.max(0,Math.min(1,v));
   M.rails.forEach(R=>{R.yAt=R.lin?(z=>R.ya+(R.yb-R.ya)*cl01((z-R.z1)/(R.z2-R.z1))):(z=>hAt(R.x,z)+R.h+R.arch*Math.sin(Math.PI*cl01((z-R.z1)/(R.z2-R.z1))));
@@ -116,7 +135,13 @@ function hAt(x,z){
   const M=map,f=Math.max(0,Math.min(M.n-2,z/S)),i=f|0,t=f-i;
   let a=M.ys[i]+(M.ys[i+1]-M.ys[i])*t;const k=M.fidx[i];
   if(k>=0){const F=M.feat[k],d=Math.abs(x-F.cx)-F.hw;if(d>0){const b=M.yb[i]+(M.yb[i+1]-M.yb[i])*t;a=b+(a-b)*(1-sm(d/F.ew));}}
-  let h=-a;const e=Math.min(300,Math.abs(x)-M.hw);if(e>0)h+=M.id==='downtown'?Math.min(e,30)*1.2:e*e*.004;
+  let h=-a;
+  if(M.pipes&&M.pipes.length)for(const P of M.pipes){if(z<P.z1-260||z>P.z2+60)continue;
+    if(P.qp){const d=z-(P.qz-P.qR);if(d>0){const dd=Math.min(d,P.qR*.95);h+=P.qR-Math.sqrt(P.qR*P.qR-dd*dd);}continue;}
+    const ez=Math.min(1,Math.max(0,(z-P.z1+260)/260))*Math.min(1,Math.max(0,(P.z2+60-z)/60)),d=Math.abs(x-P.cx)-P.flat;
+    if(d>0){const dd=Math.min(d,P.R*.985);h+=ez*(d<P.R*.985?P.R-Math.sqrt(P.R*P.R-dd*dd):P.R-Math.sqrt(P.R*P.R-dd*dd));}}
+  if(M.domes&&M.domes.length)for(const D of M.domes){const dx=x-D.x,dz=z-D.z,q=(dx*dx+dz*dz)/(D.R*D.R);if(q<1)h+=D.H*Math.pow(1-q,1.5);}
+  const e=Math.min(300,Math.abs(x)-M.hw);if(e>0)h+=M.id==='downtown'?Math.min(e,30)*1.2:e*e*.004;
   if(M.noise===1)h+=12*Math.sin(x*.011+1)*Math.sin(z*.0042)+6*Math.sin(x*.024+z*.009);
   else if(M.noise===2)h+=16*Math.sin(x*.008+2)*Math.sin(z*.003)+5*Math.sin(x*.02-z*.006)+(x*x)*.00012;
   return h;
@@ -140,6 +165,11 @@ function texFor(kind){const c=document.createElement('canvas');c.width=c.height=
   for(let i=0;i<120;i++){g.fillStyle='rgba(255,255,255,'+(.6+r()*.4)+')';g.fillRect(r()*128,r()*128,1,1);}
   const t=new U.CanvasTexture(c);t.wrapS=t.wrapT=U.RepeatWrapping;t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;}
 const ENVM={};
+// blue dye line painted on the snow: follows the terrain between two points (hf = height function)
+let DYEM=null;function dyeLine(x0,z0,x1,z1,w,hf,par){DYEM=DYEM||new U.MeshBasicMaterial({color:0x1f5fff,side:U.DoubleSide,transparent:true,opacity:.92,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+  const L=Math.hypot(x1-x0,z1-z0),n=Math.max(2,Math.ceil(L/10)),dx=(x1-x0)/L,dz=(z1-z0)/L,px=-dz*w/2,pz=dx*w/2,P=new Float32Array((n+1)*6),I=[];
+  for(let i=0;i<=n;i++){const t=i/n,x=x0+(x1-x0)*t,z=z0+(z1-z0)*t;[[x+px,z+pz],[x-px,z-pz]].forEach(([a,b],k)=>{P[(i*2+k)*3]=a;P[(i*2+k)*3+1]=hf(a,b)+.9;P[(i*2+k)*3+2]=b;});if(i<n){const a=i*2;I.push(a,a+1,a+2,a+1,a+3,a+2);}}
+  const g=new U.BufferGeometry();g.setAttribute('position',new U.BufferAttribute(P,3));g.setIndex(I);const m=new U.Mesh(g,DYEM);m.renderOrder=2;(par||runG).add(m);return m;}
 function envMat(n,c,o){const k=n+'_'+c;if(!ENVM[k])ENVM[k]=new U.MeshStandardMaterial(Object.assign({color:c,roughness:.9,vertexColors:true},o||{}));return ENVM[k];}
 function instParts(name,list,fn,mats){const src=A[name],out=[];const meshes=[];src.traverse(o=>{if(o.isMesh)meshes.push(o);});const d=new U.Object3D();
   meshes.forEach(m=>{const im=new U.InstancedMesh(m.geometry,mats[mname(m.material)]||envMat('x',0xffffff),list.length);
@@ -175,11 +205,12 @@ function buildGfx(){
   if(M.fr)buildResortGfx(M,C,add,std,tm);
   else{
   // terrain
-  const XS=14,nx=105,x0=-728,nz=M.n,pos=new Float32Array(nx*nz*3),col=new Float32Array(nx*nz*3),uv=new Float32Array(nx*nz*2),idx=new Uint32Array((nx-1)*(nz-1)*6);
+  const XS=14,W_=Math.max(728,M.hw+250),nx=Math.round(2*W_/XS)+1,x0=-W_,nz=M.n,pos=new Float32Array(nx*nz*3),col=new Float32Array(nx*nz*3),uv=new Float32Array(nx*nz*2),idx=new Uint32Array((nx-1)*(nz-1)*6);
   const lc=new U.Color(),ice=C.ice?new U.Color(0xbfe4ff):null;
   for(let j=0;j<nz;j++){const z=j*S;let lip=null;for(const l of M.lips)if(z>=l.z1&&z<=l.z2)lip=l;
     for(let i=0;i<nx;i++){const x=x0+i*XS,o=(j*nx+i)*3,h=hAt(x,z);pos[o]=x;pos[o+1]=h;pos[o+2]=z;
-      let r=1,g=1,b=1;if(lip&&Math.abs(x-lip.cx)<=lip.hw+10){lc.setHex(lip.col);r=lc.r*.8+.2;g=lc.g*.8+.2;b=lc.b*.8+.2;}
+      let r=1,g=1,b=1;if(lip&&Math.abs(x-lip.cx)<=lip.hw+10){lc.setHex(lip.col);r=.88+.12*lc.r;g=.9+.1*lc.g;b=.94+.06*lc.b;}
+      else if(M.pipes&&M.pipes.some(P=>!P.qp&&z>P.z1-100&&z<P.z2&&Math.abs(x-P.cx)>P.flat&&Math.abs(x-P.cx)<P.flat+P.R)){const P=M.pipes[0],t=Math.min(1,(Math.abs(x-P.cx)-P.flat)/P.R);r=.74+.2*t;g=.82+.14*t;b=1;}   // shade the pipe walls so they read
       else if(ice){const k=.35+.35*Math.sin(x*.013+z*.004)*Math.sin(z*.002);r=1-(1-ice.r)*k;g=1-(1-ice.g)*k;b=1;}
       col[o]=r;col[o+1]=g;col[o+2]=b;uv[(j*nx+i)*2]=x/64;uv[(j*nx+i)*2+1]=z/64;}}
   let q=0;for(let j=0;j<nz-1;j++)for(let i=0;i<nx-1;i++){const a=j*nx+i,b=a+1,c=a+nx,d=c+1;idx[q++]=a;idx[q++]=c;idx[q++]=b;idx[q++]=b;idx[q++]=c;idx[q++]=d;}
@@ -207,6 +238,13 @@ function buildGfx(){
   if(M.id==='downtown'){const r=rng(6);for(let z=200;z<M.len-1400;z+=260+r()*120)[-1,1].forEach(sd=>{const h=260+r()*360,w=160+r()*90,d=180+r()*60,x=sd*(M.hw+40+w/2),y=hAt(sd*(M.hw+40),z);
       const t=windowTex((z|0)+(sd>0?1:0));t.repeat.set(w/90,h/140);const b=add(new U.BoxGeometry(w,h,d),new U.MeshStandardMaterial({map:t,emissive:0xffffff,emissiveMap:t,emissiveIntensity:.55,roughness:.8}),x,y+h/2-10,z);
       add(new U.BoxGeometry(w+6,8,d+6),std(0xf4f7ff,{roughness:.8}),x,y+h-6,z);});}
+  // superpipe coping (blue dye line) and deck markers
+  (M.pipes||[]).forEach(P=>{if(P.qp)return;[-1,1].forEach(sd=>{const x=P.cx+sd*(P.flat+P.R*.985),L=P.z2-P.z1;
+    for(let z=P.z1;z<P.z2;z+=400){const y=hAt(x,z+200);const b=add(new U.BoxGeometry(6,3,400),new U.MeshBasicMaterial({color:0x2a6bff}),x,y+1,z+200);b.rotation.x=Math.atan2(hAt(x,z)-hAt(x,z+400),400);b.castShadow=false;}});});
+  // blue dye lines like a real park: across every lip and knuckle, and down both sides of each jump
+  M.lips.forEach(l=>{if(l.hw>2000)return;dyeLine(l.cx-l.hw,l.z2-3,l.cx+l.hw,l.z2-3,6,hAt);});
+  (M.knuck||[]).forEach(k=>{if(k.hw>2000)return;dyeLine(k.cx-k.hw,k.z,k.cx+k.hw,k.z,6,hAt);});
+  M.feat.forEach(f=>{if(f.hw>2000)return;const z0=f.i0*S,z1=f.i1*S;[-1,1].forEach(sd=>dyeLine(f.cx+sd*f.hw,z0,f.cx+sd*f.hw,z1,3,hAt));});
   // lips & flags
   M.lips.forEach(l=>[-1,1].forEach(sd=>{const x=l.cx+sd*(l.hw+6),y=hAt(l.cx,l.z2-4);add(new U.CylinderGeometry(1.2,1.2,70,6),dark,x,y+30,l.z2);
     add(new U.BoxGeometry(26,14,1),new U.MeshBasicMaterial({color:l.col}),x+sd*13,y+56,l.z2);}));
@@ -232,17 +270,17 @@ function buildGfx(){
       const tz=R.z2-8,top=R.yAt(tz)-2,gh=hAt(R.x,tz)-3,po=add(postG.clone(),plate,R.x,gh,tz);po.scale.y=top-gh;}});
   // chairlift: Blender towers, sagging cables, moving chairs
   if(M.lift&&A.lift_tower){const lx=M.lift,TW=M.liftTW||[];if(!M.liftTW){for(let z=-200;z<M.len+400;z+=760)TW.push({x:lx,y:hAt(lx,z)-2,z});TW.forEach(t=>addCol(M,{x:t.x,z:t.z,y:t.y,rad:20,h:400}));}
-    const tmats={paint:std(0x3b4556,{roughness:.55,metalness:.4,vertexColors:true}),steel:std(0x9aa0aa,{roughness:.35,metalness:.85,vertexColors:true}),dark:std(0x15161a,{roughness:.6,vertexColors:true}),concrete:std(0x8f9096,{roughness:.95,vertexColors:true})};
+    const tmats={paint:std(0x1c1d21,{roughness:.45,metalness:.55,vertexColors:true}),steel:std(0x9aa0aa,{roughness:.35,metalness:.85,vertexColors:true}),dark:std(0x15161a,{roughness:.6,vertexColors:true}),concrete:std(0x8f9096,{roughness:.95,vertexColors:true})};
     instParts('lift_tower',TW,(d,t)=>{d.position.set(t.x,t.y,t.z);d.scale.setScalar(1);d.rotation.set(0,0,0);},tmats).forEach(m=>runG.add(m));
     const cab=std(0x1a1b1f,{roughness:.5,metalness:.6}),CH=366,cables=[];
     [-88,88].forEach(ox=>{for(let i=0;i<TW.length-1;i++){const a=TW[i],b=TW[i+1],pts=[];for(let k=0;k<=8;k++){const t=k/8;pts.push(new U.Vector3(lx+ox,a.y+(b.y-a.y)*t+CH-72*t*(1-t),a.z+(b.z-a.z)*t));}
       add(new U.TubeGeometry(new U.CatmullRomCurve3(pts),16,1.1,5,false),cab,0,0,0).castShadow=false;}});
     if(A.lift_chair){const n=Math.floor((TW[TW.length-1].z-TW[0].z)/(M.fr?520:420)),L=[];for(let i=0;i<n*2;i++)L.push({i,side:i<n?-88:88,u:(i%n)/n});
-      const cm={dark:std(0x18191d,{roughness:.6,vertexColors:true}),steel:tmats.steel,seat:std(0x2a5bb8,{roughness:.55,vertexColors:true})};
+      const cm={dark:std(0x18191d,{roughness:.6,vertexColors:true}),steel:tmats.steel,seat:std(0xc4252b,{roughness:.5,vertexColors:true})};
       const chairs=instParts('lift_chair',L,()=>{},cm);chairs.forEach(m=>{m.castShadow=false;runG.add(m);});
       runG.userData.lift={chairs,L,TW,lx,CH,z0:TW[0].z,z1:TW[TW.length-1].z,t:0,speed:M.liftSpeed||60,step:(TW[TW.length-1].z-TW[0].z)/(TW.length-1)};}}
   // park fencing along groomed runs, start hut, floodlight towers
-  if(A.fence&&['park','rails','night','mega','glacier'].includes(M.id)){const L=[];for(let z=120;z<M.finishZ+200;z+=244)[-1,1].forEach(sd=>{const x=sd*(M.hw+22);L.push({x,y:hAt(x,z),z,a:Math.PI/2});});
+  if(A.fence&&['park','rails','night','mega','megapark','glacier'].includes(M.id)){const L=[];for(let z=120;z<M.finishZ+200;z+=244)[-1,1].forEach(sd=>{const x=sd*(M.hw+22);L.push({x,y:hAt(x,z),z,a:Math.PI/2});});
     instParts('fence',L,(d,t)=>{d.position.set(t.x,t.y-1,t.z);d.scale.setScalar(1);d.rotation.set(0,t.a,0);},{wood:std(0x6a4a30,{roughness:.9,vertexColors:true}),fence:std(0xff5a10,{roughness:.7,vertexColors:true}),snow:tm.snow}).forEach(m=>runG.add(m));}
   if(A.hut&&!M.fr){const hm={wood:std(0x8a5a36,{roughness:.85,vertexColors:true}),wood_dark:std(0x4a3020,{roughness:.9,vertexColors:true}),snow:tm.snow,concrete:std(0x8f9096,{roughness:.95,vertexColors:true}),
       glass:std(C.night?0xffc070:0x1a2430,{roughness:.05,metalness:.3,emissive:C.night?0xffa040:0x000000,emissiveIntensity:C.night?1.4:0,vertexColors:true})};

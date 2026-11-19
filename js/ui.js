@@ -106,16 +106,25 @@ function renderLocker(){
       d.onclick=()=>{if(!save.custom[n]){openDesigner(n);return;}save.load.skis=id;persist();sk.apply(save.load,save.body);renderLocker();};el.appendChild(d);});
     list.forEach(it=>{const own=owned(it.id),d=document.createElement('div');d.className='card'+(it.cat==='skis'?' ski':'')+(save.load[lockCat]===it.id?' on':'')+(own?'':' locked');d.style.setProperty('--r',RAR[it.rarity].c);
       d.innerHTML=(it.cat==='skis'?'<div class="skiimg" style="background-image:url('+skiCanvas(it.id).toDataURL()+')"></div>':'<img src="'+itemThumb(it)+'">')+'<span>'+(own?it.n.replace(/^[A-Z0-9. ]+ (?=[A-Z][a-z])/,''):(it.src==='pass'?'Pass tier '+PASS.find(t=>t.item===it.id).t:coinHTML(it.price)))+'</span>'+(own?'':'<em>🔒</em>');
-      d.onclick=()=>{if(!own){if(it.src==='pass')setView('pass');else{setView('shop');openDetail(it);}return;}save.load[lockCat]=it.id;persist();sk.apply(save.load,save.body);renderLocker();};el.appendChild(d);});
+      d.onclick=()=>{if(!own){if(it.src==='pass')setView('pass');else{setView('shop');openDetail(it);}return;}save.load[lockCat]=it.id;if(it.jc!==undefined){save.body.jc=it.jc;save.body.sc=it.sc;if(save.body.cw){delete save.body.cw.jacket;delete save.body.cw.stripe;}}persist();sk.apply(save.load,save.body);renderLocker();};el.appendChild(d);});
     if(lockCat==='jacket'){const row=(label,key,skip)=>{const l=document.createElement('div');l.className='lbl';l.style.gridColumn='1/-1';l.style.marginTop='8px';l.textContent=label;el.appendChild(l);
         const box=document.createElement('div');box.className='swrow';el.appendChild(box);
         JCOL.forEach((c,i)=>{const d=document.createElement('button');d.className='swd'+(save.body[key]===i?' on':'');d.title=c[0];d.style.background=hex(c[1]);d.onclick=()=>setB(key,i);box.appendChild(d);});};
-      row('Jacket colour','jc');if(IDX[save.load.jacket].stripe!==false&&!(sk&&sk.hasGear))row('Stripe colour','sc');}
+      row(IDX[save.load.jacket].bib?'Shirt colour':'Jacket colour','jc');if(IDX[save.load.jacket].stripe!==false&&!(sk&&sk.hasGear))row(IDX[save.load.jacket].bib?'Vest / bib colour':IDX[save.load.jacket].two?'Sleeve colour':IDX[save.load.jacket].top?'Print colour':'Stripe colour','sc');}
     // colour pickers for pants and gloves (first swatch = the item's own colour)
     const crow=(label,key)=>{const l=document.createElement('div');l.className='lbl';l.style.gridColumn='1/-1';l.style.marginTop='8px';l.textContent=label;el.appendChild(l);
       const box=document.createElement('div');box.className='swrow';el.appendChild(box);const cur=save.body[key]===undefined?-1:save.body[key];
       const d0=document.createElement('button');d0.className='swd'+(cur<0?' on':'');d0.title='Item colour';d0.style.background='repeating-linear-gradient(45deg,#666 0 4px,#999 4px 8px)';d0.onclick=()=>setB(key,-1);box.appendChild(d0);
       JCOL.forEach((c,i)=>{const d=document.createElement('button');d.className='swd'+(cur===i?' on':'');d.title=c[0];d.style.background=hex(c[1]);d.onclick=()=>setB(key,i);box.appendChild(d);});};
+    // colour wheel: any colour for each part (overrides the swatches); ↺ goes back to the swatch/item colour
+    const wheel=(label,key)=>{const w=document.createElement('div');w.className='cwrow';w.style.cssText='grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:6px';
+      const cw=save.body.cw||{},inp=document.createElement('input');inp.type='color';inp.value=cw[key]||'#888888';inp.style.cssText='width:38px;height:28px;border:0;padding:0;background:none;cursor:pointer';
+      const t=document.createElement('span');t.className='lbl';t.textContent=label+(cw[key]?'':' (off)');const rs=document.createElement('button');rs.className='swd';rs.textContent='↺';rs.title='Reset';rs.style.cssText='width:28px;height:28px;color:#fff';
+      inp.oninput=()=>{save.body.cw=save.body.cw||{};save.body.cw[key]=inp.value;t.textContent=label;sk.apply(save.load,save.body);};inp.onchange=()=>{persist();for(const k in THUMB)delete THUMB[k];};
+      rs.onclick=()=>{if(save.body.cw){delete save.body.cw[key];persist();sk.apply(save.load,save.body);renderLocker();}};w.append(inp,t,rs);el.appendChild(w);};
+    const WH={jacket:[['Jacket / shirt colour wheel','jacket'],['Stripe / sleeves / vest colour wheel','stripe']],pants:[['Pants colour wheel','pants']],gloves:[['Glove colour wheel','glove']],
+      helmet:[['Helmet colour wheel','helmet']],goggles:[['Frame colour wheel','frame'],['Lens colour wheel','lens']],boots:[['Boot colour wheel','boot']],skis:[['Ski face (top sheet) colour wheel','skitop'],['Ski base / binding colour wheel','skibase']]};
+    (WH[lockCat]||[]).forEach(([l,k])=>wheel(l,k));
     if(lockCat==='pants')crow('Pants colour','pnc');
     if(lockCat==='gloves')crow('Glove colour','glc');
     // fit sliders: how baggy the jacket / pants are (live preview while dragging)
@@ -130,10 +139,12 @@ function renderLocker(){
     if(lockCat==='jacket')fit('Jacket fit: slim ↔ baggy','jf',.3);
     // size sliders for every piece of gear (80%..120%)
     if(lockCat==='helmet')fit('Helmet size','zh',.5);
+    if(lockCat==='helmet'){const w=document.createElement('div');w.style.cssText='grid-column:1/-1;display:flex;gap:8px;margin-top:8px';
+      [['Wired earbuds: '+(save.body.buds?'ON':'OFF'),()=>setB('buds',save.body.buds?0:1)],['Cable: '+(save.body.budc?'Black':'White'),()=>setB('budc',save.body.budc?0:1)]].forEach(([t,fn])=>{const b=document.createElement('button');b.className='btn';b.textContent=t;b.onclick=fn;w.appendChild(b);});el.appendChild(w);}
     if(lockCat==='goggles')fit('Goggle size','zg',.5);
     if(lockCat==='gloves'){fit('Glove size','zgl',.5);prow();}
     if(lockCat==='boots')fit('Boot size','zb',.5);
-    if(lockCat==='skis'){fit('Ski / board length','zs',.5);fit('Pole length','zp',.5);}
+    if(lockCat==='skis'){fit('Ski / board length','zs',.5);fit('Ski / board width','zw',.5);fit('Ski thickness','zt',.5);fit('Pole length','zp',.5);}
     if(lockCat==='pants')fit('Pants fit: slim ↔ baggy','pf',.3);
     const cur=IDX[save.load[lockCat]];nm.innerHTML=lockCat==='skis'?'<b>'+(cur?cur.n:'Custom skis')+'</b>'+statBars(save.load.skis):cur?'<b style="color:'+RAR[cur.rarity].c+'">'+cur.n+'</b>'+RAR[cur.rarity].n+' '+CATS.find(c=>c[0]===lockCat)[1].toLowerCase():'<b>Custom skis</b>Your own design';}
 }

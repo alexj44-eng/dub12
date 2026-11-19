@@ -85,8 +85,12 @@ function featDelta(F,sx,u){const dx=Math.abs(sx),w=1-ssR(F.hw,F.hw+34,dx);if(w<=
   return d*w;}
 
 /* ---------- build ---------- */
+// real resorts are laid out 30% bigger than the OSM trace so runs, lifts and lodges have room to breathe
+const RD_STRETCH=1.6,RD_CACHE={};
+function stretchRD(D){if(!D||RD_CACHE[D.id])return D&&RD_CACHE[D.id];const k=RD_STRETCH,o=Object.assign({},D,{W:Math.round(D.W*k),L:Math.round(D.L*k),baseZ:Math.round(D.baseZ*k),
+  trails:D.trails.map(([n,d,pts,ex])=>[n,d,pts.map(([x,z])=>[x*k,z*k]),ex]),lifts:D.lifts.map(L=>Object.assign({},L,{x:L.x*k,top:L.top*k,base:L.base*k}))});return RD_CACHE[D.id]=o;}
 function buildResort(rid){
-  rid=rid||'blue';const RD=rid!=='blue'&&window.RESORT_DATA&&RESORT_DATA[rid];
+  rid=rid||'blue';const RD=rid!=='blue'&&window.RESORT_DATA&&stretchRD(RESORT_DATA[rid]);
   if(RD){CUR=RD;RS={W:RD.W,ZMIN:-1800,L:RD.L,GS:40,baseZ:RD.baseZ,liftSpeed:300};}else{CUR={id:'blue',n:'Blue Mountain',zone:'Collingwood, Ontario'};RS=RS_BLUE;}
   const r=rng(1212),M={id:'resort',rid,fr:1,ys:[0],feat:[],rails:[],lips:[],trees:[],cliffs:[],pillows:[],stairs:[],decor:[],noise:0,hw:RS.W-300,lim:RS.W-150,
     len:RS.L,finishZ:Infinity,stopZ:RS.L-500,trails:[],trav:RD?[]:BM_TRAV,F:[],fb:{},signs:[],bldg:[],cliffRocks:[],lifts:[],carpets:[],lift:0,gates:[],vill:[]};
@@ -121,20 +125,25 @@ function buildResort(rid){
   const rail=(T,z,len,off,h,box,col,arch)=>{const x=trailX(T,z)+off;M.rails.push({x,z1:z,z2:z+len,h:h*1.55,box:!!box,col,w:box?34:19,arch:arch||0,trail:T.n});};
   M.trails.forEach(T=>{
     if(T.park==='big'){let z=T.zs+300,k=0;const seq=['M','rails','L','box','XL','arch','L'];
-      while(z<T.ze-500){const s=seq[k++%seq.length],c=PCOL[k%7];if(KS[s])z+=kick(T,z,s,c)+120;else if(s==='rails'){rail(T,z,380,-55,20,0,c);rail(T,z,380,55,14,1,PCOL[(k+2)%7]);z+=560;}
-        else if(s==='box'){rail(T,z,340,0,14,1,c);z+=520;}else{rail(T,z,400,-50,18,0,c,40);rail(T,z,400,55,22,0,PCOL[(k+3)%7]);z+=560;}}}
+      while(z<T.ze-500){const s=seq[k++%seq.length],c=PCOL[k%7];if(KS[s])z+=kick(T,z,s,c)+320;else if(s==='rails'){rail(T,z,380,-55,20,0,c);rail(T,z,380,55,14,1,PCOL[(k+2)%7]);z+=760;}
+        else if(s==='box'){rail(T,z,340,0,14,1,c);z+=720;}else{rail(T,z,400,-50,18,0,c,40);rail(T,z,400,55,22,0,PCOL[(k+3)%7]);z+=760;}}}
     else if(T.park==='small'){let z=T.zs+150,k=0;const seq=['S','box','M','rails','S'];
-      while(z<T.ze-300){const s=seq[k++%seq.length],c=PCOL[k%7];if(KS[s])z+=kick(T,z,s,c)+100;else if(s==='box'){rail(T,z,260,0,10,1,c);z+=400;}else{rail(T,z,280,-45,12,1,c);rail(T,z,280,45,14,0,PCOL[(k+1)%7]);z+=420;}}}
-    else if(T.skix){// ski cross: start gate, then a banked berm on the outside of every turn, with rollers, whoops and jumps on the straights
-      let z=T.zs+300,k=0;M.gates.push({x:trailX(T,T.zs+130),z:T.zs+130,T});T.finZ=T.ze-160;
-      const ph=z=>z*T.f2+T.p2,curv=z=>-Math.sin(ph(z));   // sign of x'' along the course
-      while(z<T.ze-560){const s=Math.sin(ph(z+260));
-        if(Math.abs(s)>.82){const side=-Math.sign(curv(z+260));M.F.push({t:'berm',cx:trailX(T,z+260),z0:z,zA:z,zB:z+560,len:560,H:52,hw:T.w*.95,side,trail:T.n});z+=640;continue;}
-        const f=['rollers','kick','step','kick2'][k++%4],cx=trailX(T,z);   // no whoops: smooth rollers, step-downs and jumps only
-        if(f==='rollers'){for(let q=0;q<3;q++){M.F.push({t:'roller',cx:trailX(T,z),z0:z,zA:z,zB:z+150,len:150,H:14,hw:T.w*.92,trail:T.n});z+=160;}z+=90;}
-        else if(f==='whoops'){for(let q=0;q<6;q++){M.F.push({t:'roller',cx:trailX(T,z),z0:z,zA:z,zB:z+70,len:70,H:6,hw:T.w*.92,trail:T.n});z+=72;}z+=90;}
-        else if(f==='step'){M.F.push({t:'roller',cx,z0:z,zA:z,zB:z+260,len:260,H:24,hw:T.w*.92,trail:T.n});z+=360;}   // big step-down roller
-        else z+=kick(T,z,f==='kick2'?'M':'S',0x58d7ff)+150;}}
+      while(z<T.ze-300){const s=seq[k++%seq.length],c=PCOL[k%7];if(KS[s])z+=kick(T,z,s,c)+260;else if(s==='box'){rail(T,z,260,0,10,1,c);z+=600;}else{rail(T,z,280,-45,12,1,c);rail(T,z,280,45,14,0,PCOL[(k+1)%7]);z+=620;}}}
+    else if(T.skix){// ski cross, laid out like a real World Cup course: start gate -> start rollers -> big banked turns on every bend,
+      // and on the straights a mix of table-tops, doubles, step-downs and rhythm rollers, then a big final jump into the finish
+      let z=T.zs+260,k=0;M.gates.push({x:trailX(T,T.zs+130),z:T.zs+130,T});T.finZ=T.ze-160;T.sxp=[];
+      const ph=z=>z*T.f2+T.p2,curv=z=>-Math.sin(ph(z)),R_=(z0,len,H)=>M.F.push({t:'roller',cx:trailX(T,z0),z0,zA:z0,zB:z0+len,len,H,hw:T.w*.92,trail:T.n});
+      for(let q=0;q<3;q++){R_(z,140,20);z+=150;}z+=120;                                   // start section rollers
+      const seq=['table','double','step','rhythm','table','double','big'];
+      while(z<T.ze-1300){const s=Math.sin(ph(z+300));
+        if(Math.abs(s)>.8){const side=-Math.sign(curv(z+300));M.F.push({t:'berm',cx:trailX(T,z+300),z0:z,zA:z,zB:z+620,len:620,H:84,hw:T.w*.95,side,trail:T.n});T.sxp.push({z:z+310,side});z+=700;continue;}
+        const f=seq[k++%seq.length];
+        if(f==='table')z+=kick(T,z,'M',0x2a6bff)+160;
+        else if(f==='big')z+=kick(T,z,'L',0x2a6bff)+200;
+        else if(f==='double'){R_(z,170,30);R_(z+230,170,30);z+=520;}                       // two big rollers: jump from the first to the back of the second
+        else if(f==='step'){R_(z,300,34);z+=420;}                                          // step-down
+        else{for(let q=0;q<5;q++){R_(z,110,16);z+=118;}z+=120;}}                           // rhythm section
+      z=Math.max(z,T.ze-1250);z+=kick(T,z,'L',0x2a6bff);}                                   // final jump to the finish
     else if(T.n==='Smart Alec'){// GS course: alternating red/blue giant-slalom gates top to bottom
       let z=T.zs+420,sd=1;T.gs=1;M.gsGates=[];while(z<T.ze-400){M.gsGates.push({x:trailX(T,z)+sd*T.w*.34,z,sd,red:sd>0});sd=-sd;z+=380;}}});
   M.F.forEach(F=>{for(let k=Math.floor((F.zA-RS.ZMIN)/500);k<=Math.floor((F.zB-RS.ZMIN)/500);k++)(M.fb[k]=M.fb[k]||[]).push(F);});
@@ -154,31 +163,32 @@ function buildResort(rid){
     B('lift_station',x,top-60,0);B('lift_station',x,base+60,Math.PI);});
   if(!RD)BM_CARPETS.forEach(c=>M.carpets.push({n:c.n,x:MX(c.px),z1:MZ(c.t),z2:MZ(c.b)}));
   // signs: run name + difficulty at the top of every run, mid-run on long ones; glade, slow-zone and ski-cross signs
-  M.trails.forEach(T=>{const side=(T.pts[0][0]>0?-1:1),off=T.skix?T.w+70:T.w*.62+30;for(let z=T.zs+90;z<T.ze-400;z+=4200){const x=trailX(T,z)+side*off;M.signs.push({x,z,T});}
+  M.trails.forEach(T=>{const side=(T.pts[0][0]>0?-1:1),off=T.skix?T.w+110:T.w*.62+70;for(let z=T.zs+90;z<T.ze-400;z+=4200){const x=trailX(T,z)+side*off;M.signs.push({x,z,T});}
     if(T.glade||T.d==='dbl')M.signs.push({x:trailX(T,T.zs+150)-side*(T.w*.62+30),z:T.zs+150,danger:'glades'});
     if(T.slow)M.signs.push({x:trailX(T,T.zs+500)-side*(T.w*.62+30),z:T.zs+500,danger:'slow'});
     if(T.skix)M.signs.push({x:trailX(T,T.zs+60)-side*(T.w+70),z:T.zs+60,danger:'skix'});});
   M.trav.forEach(t=>M.signs.push({x:t.x1+120,z:t.z-t.w-40,danger:'slow'}));
   // trees: dense forest between runs, thinned glades, open summit farmland and village
   for(let z=RS.ZMIN+60;z<RS.L-80;z+=88)for(let x=-RS.W+60;x<RS.W-60;x+=88){const tx=x+(r()-.5)*70,tz=z+(r()-.5)*70;
-    if(at(GR,tx,tz)>.01||at(GR,tx+70,tz)>.3||at(GR,tx-70,tz)>.3)continue;const glade=at(GL,tx,tz);   // clear tree-free edge along every run
-    const p=tz<120?.03:tz>RS.baseZ-150?.04:glade?.11:.3;   // thinner forest overall
-    if(M.lifts.some(L=>Math.abs(tx-L.x)<180&&tz>L.top-200&&tz<L.base+200))continue;
-    if(M.lifts.some(L=>tx>L.x-260&&tx<L.x+560&&tz>L.top-260&&tz<L.top+620))continue;   // open unload bay at every lift top
+    if(at(GR,tx,tz)>.01||at(GR,tx+120,tz)>.2||at(GR,tx-120,tz)>.2)continue;const glade=at(GL,tx,tz);   // clear tree-free edge along every run
+    const p=tz<120?.03:tz>RS.baseZ-150?.04:glade?.09:(RD?.15:.24);   // thinner forest overall
+    if(M.lifts.some(L=>Math.abs(tx-L.x)<230&&tz>L.top-200&&tz<L.base+200))continue;
+    if(M.lifts.some(L=>tx>L.x-260&&tx<L.x+680&&tz>L.top-260&&tz<L.top+760))continue;   // open unload bay at every lift top
     if(M.carpets.some(c=>Math.abs(tx-c.x)<90&&tz>c.z1-60&&tz<c.z2+60))continue;
     if(M.bldg.some(b=>Math.abs(tx-b.x)<b.hx+90&&Math.abs(tz-b.z)<b.hz+90))continue;
     if(!RD&&tx>VX(-10)&&tx<VX(360)&&tz>VZ(100)&&tz<VZ(520))continue;   // no trees inside the village
     if(M.gates.some(g=>Math.abs(tx-g.x)<320&&tz>g.z-420&&tz<g.z+200))continue;   // open area round the ski-cross start
-    if(M.signs.some(s=>Math.hypot(s.x-tx,s.z-tz)<60))continue;
-    if(r()<p)M.trees.push({x:tx,z:tz,s:.8+r()*.9});}
+    if(M.signs.some(s=>Math.hypot(s.x-tx,s.z-tz)<90))continue;
+    if(r()<p){const q=r();M.trees.push({x:tx,z:tz,s:.8+r()*.9,k:q<.16?'birch':q<.26?'bush':'pine'});}else if(r()<.014)(M.rocks=M.rocks||[]).push({x:tx,z:tz,s:.7+r()*1.3});}
   M.buckets={};
-  M.trees.forEach(t=>{t.y=resortH(t.x,t.z);t.rad=5*t.s+3;t.h=70*t.s;addCol(M,t);});
+  M.trees.forEach(t=>{t.y=resortH(t.x,t.z);t.rad=(t.k==='bush'?7:5)*t.s+3;t.h=(t.k==='bush'?20:70)*t.s;addCol(M,t);});
+  (M.rocks=M.rocks||[]).forEach(k=>{k.y=resortH(k.x,k.z);addCol(M,{x:k.x,z:k.z,y:k.y,rad:16*k.s,h:30*k.s});});
   M.bldg.forEach(b=>{b.y=Math.min(...[[-1,-1],[1,-1],[-1,1],[1,1]].map(([a,c])=>resortH(b.x+a*b.hx*.8,b.z+c*b.hz*.8)))-3;
     addCol(M,{box:1,x:b.x,z:b.z,hx:b.hx,hz:b.hz,cs:Math.cos(b.rot),sn:Math.sin(b.rot),y:b.y,h:b.h,solid:1});});
   M.vill.forEach(V=>{V.y=Math.min(...[[-1,-1],[1,-1],[-1,1],[1,1],[0,0]].map(([a,c])=>{const lx=a*V.hx,lz=c*V.hz,cs=Math.cos(V.rot),sn=Math.sin(V.rot);return resortH(V.x+lx*cs+lz*sn,V.z-lx*sn+lz*cs);}))-4;
     V.h=V.st*62+40;addCol(M,{box:1,x:V.x,z:V.z,hx:V.hx,hz:V.hz,cs:Math.cos(V.rot),sn:Math.sin(V.rot),y:V.y,h:V.h+200,solid:1});});
   M.lifts.forEach(L=>L.TW.forEach(t=>{t.y=resortH(t.x,t.z)-2;addCol(M,{x:t.x,z:t.z,y:t.y,rad:22,h:400});}));
-  M.signs.forEach(s=>{s.y=resortH(s.x,s.z);addCol(M,{x:s.x,z:s.z,y:s.y,rad:7,h:60});});
+  M.signs.forEach(s=>{s.y=Math.min(...[[0,0],[8,0],[-8,0],[0,8],[0,-8]].map(([a,c])=>resortH(s.x+a,s.z+c)));addCol(M,{x:s.x,z:s.z,y:s.y,rad:7,h:60});});
   const cl01=v=>Math.max(0,Math.min(1,v));
   M.rails.forEach(R=>{R.yAt=z=>resortH(R.x,z)+R.h+R.arch*Math.sin(Math.PI*cl01((z-R.z1)/(R.z2-R.z1)));R.name=R.box?'Box':R.arch?'Rainbow Rail':'Rail';});
   return M;}
@@ -186,6 +196,19 @@ function buildResort(rid){
 /* ---------- graphics ---------- */
 function geoView(src,center,radius){const g=new U.BufferGeometry();for(const k in src.attributes)g.setAttribute(k,src.attributes[k]);g.setIndex(src.index);
   src.groups.forEach(gr=>g.addGroup(gr.start,gr.count,gr.materialIndex));g.boundingSphere=new U.Sphere(center,radius);return g;}
+let BIRCHT=null;function birchTex(){if(BIRCHT)return BIRCHT;const c=document.createElement('canvas');c.width=64;c.height=256;const g=c.getContext('2d'),r=rng(91);g.fillStyle='#ecebe6';g.fillRect(0,0,64,256);
+  for(let i=0;i<40;i++){g.fillStyle='rgba(20,20,22,'+(.5+r()*.5)+')';g.fillRect(r()*64,r()*256,6+r()*22,1.5+r()*3);}BIRCHT=new U.CanvasTexture(c);BIRCHT.wrapS=BIRCHT.wrapT=U.RepeatWrapping;return BIRCHT;}
+function mergeG(list){const P=[],N=[],UVs=[];list.forEach(g=>{g=g.index?g.toNonIndexed():g;g.computeVertexNormals();const p=g.attributes.position,n=g.attributes.normal,u=g.attributes.uv;
+    for(let i=0;i<p.count;i++){P.push(p.getX(i),p.getY(i),p.getZ(i));N.push(n.getX(i),n.getY(i),n.getZ(i));UVs.push(u?u.getX(i):0,u?u.getY(i):0);}});
+  const o=new U.BufferGeometry();o.setAttribute('position',new U.Float32BufferAttribute(P,3));o.setAttribute('normal',new U.Float32BufferAttribute(N,3));o.setAttribute('uv',new U.Float32BufferAttribute(UVs,2));return whiteCols(o);}
+function procTrees(){if(A.birch_p)return;const mk=(geo,name)=>{const m=new U.Mesh(geo,new U.MeshStandardMaterial({name}));return m;};
+  [['birch_p',7],['birch_p2',13]].forEach(([nm,seed])=>{const r=rng(seed),g=new U.Group(),H=110+r()*40,trunk=new U.CylinderGeometry(1.6,2.8,H,8,4);trunk.translate(0,H/2,0);
+    const br=[];for(let k=0;k<14;k++){const y=H*(.35+.6*k/14),L=14+r()*22,c=new U.CylinderGeometry(.35,.9,L,5);c.translate(0,L/2,0);const a=r()*6.28,tilt=.7+r()*.5;
+      c.rotateZ(tilt);c.rotateY(a);c.translate(0,y,0);br.push(c);for(let j=0;j<2;j++){const l2=L*.5,c2=new U.CylinderGeometry(.2,.4,l2,4);c2.translate(0,l2/2,0);c2.rotateZ(tilt*.6);c2.rotateY(a+(j?.6:-.6));c2.translate(-Math.sin(tilt)*Math.cos(a)*L*.7*0,y+L*.5,0);br.push(c2);}}
+    g.add(mk(whiteCols(trunk),'birch'),mk(mergeG(br),'birch_br'));A[nm]=g;});
+  {const g=new U.Group(),r=rng(5),parts=[],caps=[];for(let k=0;k<5;k++){const s_=8+r()*7,e=new U.IcosahedronGeometry(s_,1);e.scale(1,.75,1);e.translate((r()-.5)*16,s_*.55,(r()-.5)*16);parts.push(e);
+      const cp=new U.SphereGeometry(s_*.92,10,6,0,6.283,0,1.1);cp.scale(1,.7,1);cp.translate(0,0,0);const q=e.clone();q.computeBoundingBox();const bb=q.boundingBox;cp.translate((bb.max.x+bb.min.x)/2,bb.max.y-s_*.62,(bb.max.z+bb.min.z)/2);caps.push(cp);}
+    g.add(mk(mergeG(parts),'needles'),mk(mergeG(caps),'snow'));A.bush_p=g;}}
 function instChunks(names,list,fn,matsFor,size){const chunks={},d=new U.Object3D(),out=[];
   list.forEach(t=>{const k=Math.floor(t.x/size)+'_'+Math.floor(t.z/size);(chunks[k]=chunks[k]||[]).push(t);});
   for(const k in chunks){const L=chunks[k],cx=L.reduce((a,t)=>a+t.x,0)/L.length,cz=L.reduce((a,t)=>a+t.z,0)/L.length,cy=L.reduce((a,t)=>a+t.y,0)/L.length;
@@ -303,27 +326,54 @@ function buildResortGfx(M,C,add,std,tm){
     const P=new Float32Array(pnx*pnz*3),Cc=new Float32Array(pnx*pnz*3),UV=new Float32Array(pnx*pnz*2),I=new Uint32Array((pnx-1)*(pnz-1)*6);
     const lip=F.t==='kick'?M.lips.find(l=>l.cx===F.cx&&l.z2===F.z0):null;if(lip)lc.setHex(lip.col);
     for(let j=0;j<pnz;j++)for(let i=0;i<pnx;i++){const x=x0+i*st,z=Math.min(z1,z0+j*st),k=j*pnx+i;P[k*3]=x;P[k*3+1]=resortH(x,z)+.3;P[k*3+2]=z;
-      let cr=1,cg=1,cb=1;if(lip&&z>=lip.z1&&z<=lip.z2&&Math.abs(x-F.cx)<=F.hw){cr=lc.r*.8+.2;cg=lc.g*.8+.2;cb=lc.b*.8+.2;}Cc[k*3]=cr;Cc[k*3+1]=cg;Cc[k*3+2]=cb;UV[k*2]=x/64;UV[k*2+1]=z/64;}
+      let cr=1,cg=1,cb=1;if(lip&&z>=lip.z1&&z<=lip.z2&&Math.abs(x-F.cx)<=F.hw){cr=.88+.12*lc.r;cg=.9+.1*lc.g;cb=.94+.06*lc.b;}Cc[k*3]=cr;Cc[k*3+1]=cg;Cc[k*3+2]=cb;UV[k*2]=x/64;UV[k*2+1]=z/64;}
     let n=0;for(let j=0;j<pnz-1;j++)for(let i=0;i<pnx-1;i++){const a=j*pnx+i,b=a+1,c=a+pnx,d=c+1;I[n++]=a;I[n++]=c;I[n++]=b;I[n++]=b;I[n++]=c;I[n++]=d;}
     const g=new U.BufferGeometry();g.setAttribute('position',new U.BufferAttribute(P,3));g.setAttribute('color',new U.BufferAttribute(Cc,3));g.setAttribute('uv',new U.BufferAttribute(UV,2));g.setIndex(new U.BufferAttribute(I,1));g.computeVertexNormals();
     const me=new U.Mesh(g,pm);me.receiveShadow=true;me.castShadow=false;runG.add(me);});   // patches sit on the terrain: no need to render them into the shadow map
   // trees with LOD
   const tmB=Object.assign({},tm,{needles:envMat('needles',C.tree[1],{roughness:.85})});
   const tf=(d,t)=>{d.position.set(t.x,t.y-6,t.z);d.scale.setScalar(t.s*.62);d.rotation.set(0,t.x*.37+t.z*.11,Math.sin(t.x*.13+t.z)*.03);};
-  instChunks([A.pine_hq_a?['pine_hq_a','pine_hq_b','pine_hq_c']:['pine_a','pine_b'],A.pine_lod?['pine_lod']:['pine_a']],M.trees,tf,ni=>ni===1?tmB:tm,1500);
+  procTrees();
+  instChunks([A.pine_hq_a?['pine_hq_a','pine_hq_b','pine_hq_c']:['pine_a','pine_b'],A.pine_lod?['pine_lod']:['pine_a']],M.trees.filter(t=>!t.k||t.k==='pine'),tf,ni=>ni===1?tmB:tm,1500);
+  // birches (bare white trunks, winter) and snowy bushes for variety; boulders scattered through the woods
+  const bm_={birch:std(0xffffff,{map:birchTex(),roughness:.8}),birch_br:std(0x4a3f38,{roughness:.9}),needles:tmB.needles,snow:tm.snow};
+  instChunks([['birch_p','birch_p2'],['birch_p']],M.trees.filter(t=>t.k==='birch'),(d,t)=>{d.position.set(t.x,t.y-4,t.z);d.scale.setScalar(t.s*.9);d.rotation.set(0,t.x*.31+t.z*.07,0);},()=>bm_,1500);
+  instChunks([['bush_p'],['bush_p']],M.trees.filter(t=>t.k==='bush'),(d,t)=>{d.position.set(t.x,t.y-3,t.z);d.scale.set(t.s*1.2,t.s,t.s*1.2);d.rotation.set(0,t.x*.2,0);},()=>bm_,1500);
+  if(A.rock_hq_a&&M.rocks.length){const rk={rock:std(0x6d7686,{roughness:.95}),snow:tm.snow};instChunks([['rock_hq_a','rock_hq_b'],['rock_hq_a']],M.rocks,(d,t)=>{d.position.set(t.x,t.y-6*t.s,t.z);d.scale.setScalar(t.s*1.4);d.rotation.set(0,t.x*.7,(t.z%3)*.05);},()=>rk,1500);}
   // buildings + name boards
+  // dye lines on every jump: lip, knuckle, both edges
+  M.F.forEach(F=>{if(F.t!=='kick')return;const h=resortH;dyeLine(F.cx-F.hw,F.z0-2,F.cx+F.hw,F.z0-2,4,h);dyeLine(F.cx-F.hw,F.z0+F.T,F.cx+F.hw,F.z0+F.T,4,h);
+    [-1,1].forEach(sd=>dyeLine(F.cx+sd*F.hw,F.zA+10,F.cx+sd*F.hw,F.zB-10,3,h));});
   const night=!!C.night,bm={wood:std(0x8a5a36,{roughness:.85,vertexColors:true}),wood_dark:std(0x4a3020,{roughness:.9,vertexColors:true}),snow:tm.snow,concrete:std(0x8f9096,{roughness:.95,vertexColors:true}),
     glass:std(0xffc98a,{roughness:.08,metalness:.2,emissive:0xffa850,emissiveIntensity:night?1.5:.55,vertexColors:true}),steel:std(0x9aa0aa,{roughness:.35,metalness:.85,vertexColors:true}),
-    paint:std(0x3b4556,{roughness:.55,metalness:.4,vertexColors:true}),dark:std(0x15161a,{roughness:.6,vertexColors:true})};
-  M.bldg.forEach(b=>{if(!A[b.name])return;const o=part(b.name);o.traverse(m=>{if(m.isMesh){m.material=bm[mname(m.material)]||tm.snow;m.castShadow=m.receiveShadow=true;}});o.position.set(b.x,b.y,b.z);o.rotation.y=b.rot;runG.add(o);
+    paint:std(0x1c1d21,{roughness:.45,metalness:.55,vertexColors:true}),dark:std(0x15161a,{roughness:.6,vertexColors:true})};
+  // lift terminals: concrete pad, red steel portal columns, charcoal drive housing with red trim, big bullwheel the cables wrap round, operator hut with lit windows
+  const tm_={red:std(0xb8232a,{roughness:.4,metalness:.5}),char:std(0x1d1e22,{roughness:.45,metalness:.5}),steel:bm.steel,conc:bm.concrete,glass:bm.glass,cable:std(0x1a1b1f,{roughness:.5,metalness:.6}),snow:std(0xf4f7fb,{roughness:.9}),wood:bm.wood};
+  const terminal=b=>{const L=M.lifts.find(l=>Math.abs(l.x-b.x)<2);if(!L)return false;const g=new U.Group(),gy=b.y,top=b.rot===0,wy=290,sd=top?1:-1;g.position.set(b.x,gy,b.z);runG.add(g);
+    const box=(w,h,d,m,x,y,z)=>{const o=new U.Mesh(whiteCols(new U.BoxGeometry(w,h,d)),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;g.add(o);return o;};
+    box(260,70,300,tm_.conc,0,-24,0);                                                     // foundation
+    [-1,1].forEach(k=>{box(18,wy+40,22,tm_.red,k*112,(wy-20)/2-22,-60*sd);box(18,wy+40,22,tm_.red,k*112,(wy-20)/2-22,60*sd);box(20,16,150,tm_.red,k*112,wy-12,0);});   // portal columns + beams
+    box(250,16,24,tm_.red,0,wy-12,-60*sd);box(250,16,24,tm_.red,0,wy-12,60*sd);
+    const hs=box(236,74,190,tm_.char,0,wy+34,0);box(240,8,194,tm_.red,0,wy+2,0);box(232,10,186,tm_.snow,0,wy+76,0);   // drive housing, red trim, snow on top
+    const bw=new U.Mesh(new U.TorusGeometry(88,5,8,40),tm_.red);bw.rotation.x=Math.PI/2;bw.position.set(0,wy-26,0);g.add(bw);
+    [0,1,2,3].forEach(k=>{const sp=new U.Mesh(new U.BoxGeometry(176,3,4),tm_.steel);sp.rotation.y=k*Math.PI/4;sp.position.set(0,wy-26,0);g.add(sp);});
+    box(16,26,16,tm_.steel,0,wy-14,0);
+    // operator hut at the side of the loading area
+    const hx=-175,hz=40*sd,hy=resortH(b.x+hx,b.z+hz)-gy;box(76,140,84,tm_.wood,hx,hy+10,hz);box(78,26,4,tm_.glass,hx,hy+52,hz+44*sd);box(4,26,60,tm_.glass,hx+40,hy+52,hz);box(90,8,98,tm_.char,hx,hy+84,hz);box(86,10,94,tm_.snow,hx,hy+92,hz);
+    // cables run from the bullwheel out to the first tower
+    const T=L.TW,tw=top?T.reduce((a_,t)=>Math.abs(t.z-b.z)<Math.abs(a_.z-b.z)?t:a_,T[0]):T.reduce((a_,t)=>Math.abs(t.z-b.z)<Math.abs(a_.z-b.z)?t:a_,T[0]);
+    [-88,88].forEach(ox=>{const a_=new U.Vector3(L.x+ox,gy+wy-26,b.z),c_=new U.Vector3(L.x+ox,cableY(L,tw.z),tw.z),mid=a_.clone().lerp(c_,.5);mid.y-=18;
+      const m=new U.Mesh(new U.TubeGeometry(new U.QuadraticBezierCurve3(a_,mid,c_),14,1.1,5,false),tm_.cable);runG.add(m);});
+    return true;};
+  M.bldg.forEach(b=>{if(b.name==='lift_station'&&terminal(b))return;if(!A[b.name])return;const o=part(b.name);o.traverse(m=>{if(m.isMesh){m.material=bm[mname(m.material)]||tm.snow;m.castShadow=m.receiveShadow=true;}});o.position.set(b.x,b.y,b.z);o.rotation.y=b.rot;runG.add(o);
     if(b.label){const h=b.name==='lodge'?260:b.name==='chalet'?170:150,bd=add(new U.PlaneGeometry(b.label.length>14?300:220,34),new U.MeshBasicMaterial({map:labelTex(b.label),side:U.DoubleSide}),b.x,b.y+h,b.z-b.hz-12);bd.rotation.y=Math.PI;}});
   if(M.vill.length)buildVillage(M,add,std,tm);
   // trail map board in the unload bay at the top of every lift (you step off facing it)
   {const wood=std(0x4a3020,{roughness:.85}),roofM=std(0xf3f6fb,{roughness:.9});
-    M.lifts.forEach(L=>{const s=boardSpot(L),y=resortH(s.x,s.z),cv=document.createElement('canvas');drawTrailMap(cv,{x:L.x+150,z:L.top+170},900);
-      const tx=new U.CanvasTexture(cv);tx.anisotropy=8;const bw=230,bh=bw*cv.height/cv.width,ry=Math.atan2(-180,-120);
+    M.lifts.forEach(L=>{const s=boardSpot(L),cv=document.createElement('canvas');drawTrailMap(cv,{x:L.x+150,z:L.top+170},900);
+      const tx=new U.CanvasTexture(cv);tx.anisotropy=8;const bw=230,bh=bw*cv.height/cv.width,ry=Math.atan2(-180,-120),cR=Math.cos(ry),sR=Math.sin(ry),y=Math.min(...[-1,0,1].map(k=>resortH(s.x+k*(bw/2+6)*cR,s.z-k*(bw/2+6)*sR)));
       const g=new U.Group();g.position.set(s.x,y,s.z);g.rotation.y=ry;runG.add(g);g.userData.cx=s.x;g.userData.cz=s.z;g.userData.r=5000;runG.userData.far=(runG.userData.far||[]).concat(g);
-      [-1,1].forEach(k=>{const po=new U.Mesh(new U.BoxGeometry(8,bh+70,8),wood);po.position.set(k*(bw/2+6),(bh+70)/2,0);po.castShadow=true;g.add(po);});
+      [-1,1].forEach(k=>{const po=new U.Mesh(new U.BoxGeometry(8,bh+130,8),wood);po.position.set(k*(bw/2+6),(bh+70)/2-30,0);po.castShadow=true;g.add(po);});
       const fr=new U.Mesh(new U.BoxGeometry(bw+16,bh+16,5),wood);fr.position.set(0,60+bh/2,-2);fr.castShadow=true;g.add(fr);
       const pn=new U.Mesh(new U.PlaneGeometry(bw,bh),new U.MeshStandardMaterial({map:tx,roughness:.7}));pn.position.set(0,60+bh/2,.8);g.add(pn);
       const rf=new U.Mesh(new U.BoxGeometry(bw+40,6,30),roofM);rf.position.set(0,60+bh+14,0);rf.rotation.x=-.12;rf.castShadow=true;g.add(rf);
@@ -338,9 +388,9 @@ function buildResortGfx(M,C,add,std,tm){
   {const x=MX(330),z=MZ(40),y=resortH(x,z)+1;const ice=add(new U.CircleGeometry(220,48),std(0xcfe8ff,{roughness:.08,metalness:.1}),x,y,z);ice.rotation.x=-Math.PI/2;ice.castShadow=false;}
   // signs
   const post=std(0x5a3a22,{roughness:.9}),back=std(0x2a2a30,{roughness:.7}),dpost=std(0x2a2e3a,{roughness:.5,metalness:.4});
-  M.signs.forEach(s=>{if(s.danger){add(new U.CylinderGeometry(1.8,1.8,96,8),dpost,s.x,s.y+46,s.z);
+  M.signs.forEach(s=>{if(s.danger){add(new U.CylinderGeometry(1.8,1.8,156,8),dpost,s.x,s.y+16,s.z);
       const f=add(new U.PlaneGeometry(64,64),new U.MeshStandardMaterial({map:dangerTex(s.danger),roughness:.6,transparent:true,alphaTest:.5,side:U.DoubleSide}),s.x,s.y+92,s.z-2.2);f.rotation.y=Math.PI;return;}
-    add(new U.CylinderGeometry(2.2,2.6,64,8),post,s.x,s.y+30,s.z);
+    add(new U.CylinderGeometry(2.2,2.6,124,8),post,s.x,s.y,s.z);
     const b=add(new U.BoxGeometry(84,32,2.4),back,s.x,s.y+64,s.z);b.rotation.y=Math.PI;
     const f=add(new U.PlaneGeometry(82,30.75),new U.MeshStandardMaterial({map:signTex(s.T),roughness:.6}),s.x,s.y+64,s.z-1.4);f.rotation.y=Math.PI;});
   // ski-cross start gate + course fencing along L-Hill
@@ -357,8 +407,13 @@ function buildResortGfx(M,C,add,std,tm){
     {const fz=T.finZ,fx=trailX(T,fz),fy=resortH(fx,fz);[-1,1].forEach(s=>add(new U.BoxGeometry(10,110,10),dark,fx+s*(T.w+10),fy+55,fz));
       const fb=add(new U.PlaneGeometry(T.w*2+20,30),new U.MeshBasicMaterial({map:labelTex('Finish'),side:U.DoubleSide}),fx,fy+104,fz);fb.rotation.y=Math.PI;
       const ln=add(new U.PlaneGeometry(T.w*2,4),new U.MeshBasicMaterial({color:0xff2a2a}),fx,fy+1.5,fz);ln.rotation.x=-Math.PI/2;}
-    if(A.fence){const L=[];for(let z=T.zs+300;z<T.ze-200;z+=244)[-1,1].forEach(sd=>{const x=trailX(T,z)+sd*(T.w+30);L.push({x,y:resortH(x,z),z});});
-      instParts('fence',L,(d,t)=>{d.position.set(t.x,t.y-1,t.z);d.scale.setScalar(1);d.rotation.set(0,Math.PI/2,0);},{wood:std(0x6a4a30,{roughness:.9,vertexColors:true}),fence:std(0xff5a10,{roughness:.7,vertexColors:true}),snow:tm.snow}).forEach(m=>runG.add(m));}});
+    {for(let z=T.zs+200;z<T.finZ;z+=60)[-1,1].forEach(sd=>dyeLine(trailX(T,z)+sd*(T.w-6),z,trailX(T,z+60)+sd*(T.w-6),z+60,5,resortH));
+      const pr=std(0xd62a2a,{roughness:.6,side:U.DoubleSide}),pb=std(0x2257d6,{roughness:.6,side:U.DoubleSide}),pole=std(0x202020,{roughness:.4});
+      (T.sxp||[]).forEach((P,i)=>{const x=trailX(T,P.z)-P.side*(T.w*.55),y=resortH(x,P.z);[-1,1].forEach(o=>add(new U.CylinderGeometry(.9,.9,64,6),pole,x+o*16,y+32,P.z));const pn=add(new U.PlaneGeometry(32,26),i%2?pb:pr,x,y+46,P.z);pn.castShadow=false;});}
+    // course fencing: red, continuous, each panel follows the course line and the slope (no gaps)
+    if(A.fence){const L=[],st=180,X1=new U.Vector3(1,0,0);for(let z=T.zs+300;z<T.ze-200;z+=st)[-1,1].forEach(sd=>{const xa=trailX(T,z)+sd*(T.w+30),xb=trailX(T,z+st)+sd*(T.w+30),a=new U.Vector3(xa,resortH(xa,z),z),b=new U.Vector3(xb,resortH(xb,z+st),z+st),dv=b.clone().sub(a),len=dv.length();
+        L.push({p:a.clone().lerp(b,.5),q:new U.Quaternion().setFromUnitVectors(X1,dv.divideScalar(len)),sx:(len+8)/246});});
+      instParts('fence',L,(d,t)=>{d.position.copy(t.p);d.position.y-=2;d.quaternion.copy(t.q);d.scale.set(t.sx,1,1);},{wood:std(0x7a1a1e,{roughness:.8,vertexColors:true}),fence:std(0xd62a2a,{roughness:.6,vertexColors:true}),snow:tm.snow}).forEach(m=>runG.add(m));}});
   // magic carpets (conveyor belts with covers)
   M.carpets.forEach(c=>{const z1=c.z1,z2=c.z2,len=z2-z1,mid=(z1+z2)/2,y1=resortH(c.x,z1),y2=resortH(c.x,z2);const belt=add(new U.BoxGeometry(26,3,len),std(0x2a2d33,{roughness:.6}),c.x,(y1+y2)/2+1.5,mid);belt.rotation.x=Math.atan2(y1-y2,len);
     const cover=add(new U.BoxGeometry(34,22,len),new U.MeshStandardMaterial({color:0xbfd8f0,roughness:.2,transparent:true,opacity:.35}),c.x,(y1+y2)/2+12,mid);cover.rotation.x=belt.rotation.x;cover.castShadow=false;});
@@ -376,7 +431,7 @@ function buildResortGfx(M,C,add,std,tm){
 const LIFT_CH=366,_lq=new U.Object3D();
 function cableY(L,z){const T=L.TW,f=Math.max(0,Math.min(T.length-1.001,(z-T[0].z)/L.step)),i=f|0,t=f-i,a=T[i],b=T[i+1];return a.y+(b.y-a.y)*t+LIFT_CH-72*t*(1-t);}
 function buildResortLifts(M,add,std){if(!A.lift_tower)return;runG.userData.rlifts=[];
-  const tmats={paint:std(0x3b4556,{roughness:.55,metalness:.4,vertexColors:true}),steel:std(0x9aa0aa,{roughness:.35,metalness:.85,vertexColors:true}),dark:std(0x15161a,{roughness:.6,vertexColors:true}),concrete:std(0x8f9096,{roughness:.95,vertexColors:true})};
+  const tmats={paint:std(0x1c1d21,{roughness:.45,metalness:.55,vertexColors:true}),steel:std(0x9aa0aa,{roughness:.35,metalness:.85,vertexColors:true}),dark:std(0x15161a,{roughness:.6,vertexColors:true}),concrete:std(0x8f9096,{roughness:.95,vertexColors:true})};
   const cab=std(0x1a1b1f,{roughness:.5,metalness:.6});
   M.lifts.forEach(L=>{const TW=L.TW;
     instParts('lift_tower',TW,(d,t)=>{d.position.set(t.x,t.y,t.z);d.scale.setScalar(1);d.rotation.set(0,0,0);},tmats).forEach(m=>runG.add(m));
@@ -384,7 +439,7 @@ function buildResortLifts(M,add,std){if(!A.lift_tower)return;runG.userData.rlift
       add(new U.TubeGeometry(new U.CatmullRomCurve3(pts),16,1.1,5,false),cab,0,0,0).castShadow=false;}});
     const bd=add(new U.PlaneGeometry(240,32),new U.MeshBasicMaterial({map:labelTex(L.num+' · '+L.n),side:U.DoubleSide}),L.x,resortH(L.x,L.base+60)+330,L.base-80);bd.rotation.y=Math.PI;
     if(!A.lift_chair)return;const n=Math.max(2,Math.floor((TW[TW.length-1].z-TW[0].z)/(L.six?480:420))),list=[];for(let i=0;i<n*2;i++)list.push({side:i<n?-88:88,u:(i%n)/n});
-    const cm={dark:std(0x18191d,{roughness:.6,vertexColors:true}),steel:tmats.steel,seat:std(L.six?0x2a5bb8:0xd8343b,{roughness:.55,vertexColors:true})};
+    const cm={dark:std(0x18191d,{roughness:.6,vertexColors:true}),steel:tmats.steel,seat:std(L.six?0xc4252b:0x26272c,{roughness:.5,vertexColors:true})};
     const chairs=instParts('lift_chair',list,()=>{},cm);chairs.forEach(m=>{m.castShadow=false;runG.add(m);});
     runG.userData.rlifts.push({L,chairs,list,t:0});});}
 function updateResortLifts(dt){updateSled(dt);raceStep(dt);const LS=runG&&runG.userData.rlifts;if(!LS)return;
@@ -394,7 +449,7 @@ function updateResortLifts(dt){updateSled(dt);raceStep(dt);const LS=runG&&runG.u
     S.chairs.forEach(m=>m.instanceMatrix.needsUpdate=true);}
   const mc=runG.userData.myChair;if(mc){mc.visible=p.mode==='lift'&&!!p.lift;if(mc.visible){mc.position.set(p.lift.x+88,cableY(p.lift,p.cz),p.cz);mc.rotation.set(0,Math.PI,0);}}}
 function myChair(){if(runG.userData.myChair)return runG.userData.myChair;const o=part('lift_chair'),std=(c)=>new U.MeshStandardMaterial({color:c,roughness:.55,vertexColors:true});
-  const mm={dark:std(0x18191d),steel:new U.MeshStandardMaterial({color:0x9aa0aa,roughness:.35,metalness:.85,vertexColors:true}),seat:std(0xffd23f)};
+  const mm={dark:std(0x18191d),steel:new U.MeshStandardMaterial({color:0x9aa0aa,roughness:.35,metalness:.85,vertexColors:true}),seat:std(0xc4252b)};
   o.traverse(m=>{if(m.isMesh)m.material=mm[mname(m.material)]||mm.dark;});runG.add(o);runG.userData.myChair=o;return o;}
 
 /* ---------- lift ride & free-roam helpers ---------- */
@@ -407,7 +462,7 @@ function topOf(L){return L||(isBlue()&&map.lifts.find(l=>l.num===6))||map.lifts.
 // top of a lift: you step off into the unload bay (cleared of trees) facing the trail-map board, standing still; turn and go
 function arriveTop(r,L){L=topOf(L||r.lift);if(r.mode==='tow'&&SLED){SLED.ph='leave';SLED.t=0;}clearDebris(r);r.sk.gear(true);r.lift=null;Object.assign(r,{mode:'ground',x:L.x+150,z:L.top+170,vx:0,vz:0,vy:0,vyG:0,head:.9,sw:false,spin:0,yo:0,ry:0,pitch:0,crashT:0,rail:null,_tr:null,bsp:0,hsk:0});r.y=hAt(r.x,r.z);r.safeT=3;
   if(r===p){camD={x:Math.sin(.9),z:Math.cos(.9)};cam.position.set(r.x-Math.sin(.9)*160,r.y+80,r.z-Math.cos(.9)*160);toast('Top of the <b>'+L.n+'</b> · check the trail map board · <b>M</b> full map · <b>Y</b> snowmobile');}}
-function boardSpot(L){return {x:L.x+330,z:L.top+290};}
+function boardSpot(L){return {x:L.x+430,z:L.top+380};}
 function liftStep(r,dt){const I=r.inp,sp=RS.liftSpeed*(r.lift.six?1:.7)*(I.w?3.5:1);r.cz-=sp*dt;liftPlace(r);r.vz=-sp;r.comp=0;
   if(r.cz<=r.lift.TW[0].z+40)arriveTop(r,r.lift);}
 function trailAt(x,z){let best=null,bd=1e9;for(const T of map.trails){if(z<T.zs-80||z>T.ze+80)continue;const d=Math.abs(x-trailX(T,z));if(d<T.w+40&&d<bd){bd=d;best=T;}}
@@ -457,20 +512,46 @@ function skixAI(r){const I=r.inp;if(!RACE||!RACE.go||r.mode!=='ground'||r.fin)re
 /* ---------- snowmobile tow (Y): a sled with a driver pulls up, winches you in on a tow rope and drags you uphill ---------- */
 let SLED=null;
 function sledModel(){const g=new U.Group(),m=(c,o)=>new U.MeshStandardMaterial(Object.assign({color:c,roughness:.45,metalness:.1},o||{}));
-  const red=m(0xd8262e,{roughness:.3,metalness:.25}),blk=m(0x15161a,{roughness:.8}),gry=m(0x3a3e46,{roughness:.6}),glass=m(0x223040,{roughness:.05,transparent:true,opacity:.55}),chrome=m(0xcfd6e4,{metalness:.9,roughness:.2}),lamp=m(0xffffff,{emissive:0xfff2c0,emissiveIntensity:1.5});
-  const B=(w,h,d,mat,x,y,z,rx)=>{const o=new U.Mesh(new U.BoxGeometry(w,h,d),mat);o.position.set(x,y,z);if(rx)o.rotation.x=rx;o.castShadow=true;g.add(o);return o;};
-  B(34,10,40,blk,0,9,-16);                       // tunnel + track housing
-  for(let k=0;k<6;k++)B(30,2.2,4,gry,0,3.2,-34+k*7);   // track lugs
-  B(36,14,34,red,0,14,22,-.12);B(30,8,18,red,0,23,34,-.45);   // hood + nose
-  B(26,6,30,blk,0,22,-14);B(24,4,8,blk,0,26,-26);            // seat + rear rack
-  B(28,14,2,glass,0,32,17,-.55);                             // windshield
-  B(30,1.6,1.6,chrome,0,31,8);[-1,1].forEach(s=>B(1.6,6,1.6,chrome,s*14,28,8));   // handlebars
-  B(8,3,1,lamp,0,20,40,-.3);
-  [-1,1].forEach(s=>{B(5,1.5,34,chrome,s*20,1.2,34);B(2,10,2,gry,s*20,7,36);B(5,6,2,chrome,s*20,3,51,.6);});   // front skis + spindles
+  // decal for the side panels (original DUB12 graphics)
+  const dc=document.createElement('canvas');dc.width=512;dc.height=128;{const q=dc.getContext('2d');q.fillStyle='#d8262e';q.fillRect(0,0,512,128);q.fillStyle='#15161a';q.beginPath();q.moveTo(0,128);q.lineTo(300,128);q.lineTo(380,40);q.lineTo(512,40);q.lineTo(512,128);q.fill();
+    q.fillStyle='#ffffff';q.beginPath();q.moveTo(140,128);q.lineTo(190,128);q.lineTo(300,10);q.lineTo(250,10);q.fill();q.font='italic 900 54px Impact,Arial Black,sans-serif';q.fillText('DUB12',330,104);q.font='800 16px Inter,Arial,sans-serif';q.fillText('MOUNTAIN OPS',40,40);}
+  const dtex=new U.CanvasTexture(dc);dtex.anisotropy=8;
+  const red=m(0xd8262e,{roughness:.28,metalness:.3}),side=m(0xffffff,{map:dtex,roughness:.3,metalness:.25}),blk=m(0x15161a,{roughness:.75}),rub=m(0x1b1c1f,{roughness:.95}),gry=m(0x3a3e46,{roughness:.55,metalness:.4}),
+    glass=m(0x1c2a38,{roughness:.04,metalness:.3,transparent:true,opacity:.5,side:U.DoubleSide}),chrome=m(0xcfd6e4,{metalness:.95,roughness:.18}),lamp=m(0xffffff,{emissive:0xfff2c0,emissiveIntensity:1.8}),tail=m(0xff2020,{emissive:0xff1010,emissiveIntensity:1.2}),yel=m(0xf2c62a,{roughness:.4,metalness:.3});
+  const add_=(geo,mat,x,y,z)=>{const o=new U.Mesh(geo,mat);o.position.set(x||0,y||0,z||0);o.castShadow=true;o.receiveShadow=true;g.add(o);return o;};
+  // side-profile extrusion: points are [forward, up], extruded across the width
+  const prof=(pts,w,bev)=>{const sh=new U.Shape();pts.forEach(([a,b],i)=>i?sh.lineTo(a,b):sh.moveTo(a,b));sh.closePath();
+    const geo=new U.ExtrudeGeometry(sh,{depth:w-2*(bev||0),bevelEnabled:!!bev,bevelThickness:bev||0,bevelSize:bev||0,bevelSegments:3,curveSegments:10});geo.rotateY(-Math.PI/2);geo.translate(w/2-(bev||0),0,0);geo.computeVertexNormals();return geo;};
+  // tunnel + rear bumper
+  add_(prof([[-46,8],[6,8],[6,18],[-40,18],[-46,14]],30,1.2),blk);
+  add_(new U.TorusGeometry(15,1,6,16,Math.PI),chrome,0,13,-47).rotation.set(Math.PI/2,0,0);
+  // track: rubber loop with lugs, idler wheels and the rear suspension rails
+  add_(prof([[-44,1],[0,1],[6,4],[8,10],[2,13],[-44,13],[-48,8]],26,1.5),rub);
+  for(let k=0;k<11;k++)add_(new U.BoxGeometry(26.5,1.2,2.2),gry,0,.4,-42+k*4.2);
+  [-1,1].forEach(sd=>{[-40,-20,0].forEach(z=>{const w=add_(new U.CylinderGeometry(4,4,2,16),gry,sd*12.5,6,z);w.rotation.z=Math.PI/2;});add_(new U.BoxGeometry(1.5,2,44),chrome,sd*12.6,3.2,-20);});
+  // running boards
+  [-1,1].forEach(sd=>add_(new U.BoxGeometry(8,1.2,40),gry,sd*19,9,-12));
+  // body: sleek hood/belly pan with the decal side panels, nose, headlights
+  add_(prof([[2,6],[42,6],[56,12],[54,18],[34,30],[14,34],[2,30]],38,3),red);
+  [-1,1].forEach(sd=>{const pnl=add_(new U.PlaneGeometry(44,14),side,sd*19.6,17,26);pnl.rotation.y=sd*Math.PI/2;});
+  [-1,1].forEach(sd=>{const l=add_(new U.SphereGeometry(2.6,14,10),lamp,sd*7,20,50);l.scale.set(1.3,.7,.5);});
+  // windshield (curved, tinted) and handlebars with hand guards
+  {const ws=add_(new U.CylinderGeometry(19,19,16,24,1,true,-.9,1.8),glass,0,40,4);ws.rotation.x=-.5;ws.scale.set(1,1,.5);}
+  add_(new U.CylinderGeometry(.9,.9,32,8),chrome,0,37,10).rotation.z=Math.PI/2;
+  [-1,1].forEach(sd=>{add_(new U.CylinderGeometry(1.4,1.4,7,10),blk,sd*13,37,10).rotation.z=Math.PI/2;const hg=add_(new U.SphereGeometry(4,12,8,0,Math.PI),blk,sd*15,38,13);hg.scale.set(.4,.8,1);hg.rotation.y=sd*-.6;});
+  add_(new U.CylinderGeometry(1.2,1.6,8,10),gry,0,33,10);
+  // seat (rounded) + rear rack + tail light
+  add_(prof([[-40,18],[2,18],[6,22],[2,26],[-36,26],[-40,23]],22,2.2),blk);
+  add_(new U.BoxGeometry(18,1.2,10),chrome,0,27.5,-36);[-1,1].forEach(sd=>add_(new U.BoxGeometry(1.2,4,10),chrome,sd*9,25.5,-36));
+  add_(new U.BoxGeometry(14,2.4,1),tail,0,16,-46.6);
+  // front skis on A-arm suspension with coil-over shocks
+  [-1,1].forEach(sd=>{const sk_=add_(prof([[0,0],[44,0],[52,3],[56,8],[53,8],[49,4.4],[40,2],[0,2]],5,.6),gry,sd*21,0,8);
+    add_(new U.CylinderGeometry(.8,.8,20,6),chrome,sd*15,10,34).rotation.z=sd*1.1;add_(new U.CylinderGeometry(.8,.8,20,6),chrome,sd*15,13,30).rotation.z=sd*1.1;
+    const sp=add_(new U.CylinderGeometry(1.8,1.8,12,10),yel,sd*17,13,36);sp.rotation.z=sd*.5;add_(new U.CylinderGeometry(1.2,1.2,8,8),gry,sd*21,6,32);});
   g.traverse(o=>{if(o.isMesh)o.receiveShadow=true;});
   // driver: a real rider sitting on the seat
   const dr=makeRider();dr.apply(Object.assign({},save.load,{skis:'s_chev'}),Object.assign({},save.body,{jc:4,sc:3,hood:false}));dr.gear(false);dr.setPoles(false);
-  dr.root.position.set(0,6,-30);g.add(dr.root);g.userData.drv=dr;return g;}
+  dr.root.position.set(0,7,-14);g.add(dr.root);g.userData.drv=dr;return g;}
 function ropeMesh(){const r=new U.Mesh(new U.CylinderGeometry(.5,.5,1,6),new U.MeshStandardMaterial({color:0xffd23f,roughness:.6}));r.castShadow=true;return r;}
 function towToggle(r){if(!map.fr||r!==p)return;
   if(r.mode==='tow'){towRelease(r);return;}if(r.mode!=='ground'||r.crashT>0)return;

@@ -56,12 +56,12 @@ function snowTextures(kind){if(SNOWC[kind])return SNOWC[kind];const N=512,r=rng(
     if(kind==='cord'){const ph=(x/N)*22*Math.PI*2+vnoise(x,y,8,3)*1.2;h=Math.pow(.5+.5*Math.sin(ph),.6)*.55+vnoise(x,y,64,1)*.25+vnoise(x,y,16,2)*.2;}
     else{const w=Math.sin((y/N)*20*Math.PI*2+vnoise(x,y,4,5)*7)*.18;h=vnoise(x,y,8,1)*.45+vnoise(x,y,32,2)*.22+vnoise(x,y,128,4)*.12+w;}
     hgt[y*N+x]=h;}
-  const nc=document.createElement('canvas');nc.width=nc.height=N;const ng=nc.getContext('2d'),ni=ng.createImageData(N,N),str=kind==='cord'?3.2:2.4;
+  const nc=document.createElement('canvas');nc.width=nc.height=N;const ng=nc.getContext('2d'),ni=ng.createImageData(N,N),str=kind==='cord'?5.2:2.4;
   const cc=document.createElement('canvas');cc.width=cc.height=N;const cg=cc.getContext('2d'),ci=cg.createImageData(N,N);
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){const i=y*N+x,hx=hgt[y*N+((x+1)%N)]-hgt[y*N+((x-1+N)%N)],hy=hgt[((y+1)%N)*N+x]-hgt[((y-1+N)%N)*N+x];
     let nx=-hx*str,ny=-hy*str,nz=1;const l=Math.hypot(nx,ny,nz);nx/=l;ny/=l;nz/=l;
     ni.data[i*4]=(nx*.5+.5)*255;ni.data[i*4+1]=(ny*.5+.5)*255;ni.data[i*4+2]=(nz*.5+.5)*255;ni.data[i*4+3]=255;
-    const v=246+hgt[i]*9-r()*5;ci.data[i*4]=v-4;ci.data[i*4+1]=v-1;ci.data[i*4+2]=Math.min(255,v+6);ci.data[i*4+3]=255;}
+    const v=kind==='cord'?232+hgt[i]*26-r()*4:246+hgt[i]*9-r()*5;ci.data[i*4]=v-4;ci.data[i*4+1]=v-1;ci.data[i*4+2]=Math.min(255,v+6);ci.data[i*4+3]=255;}
   ng.putImageData(ni,0,0);cg.putImageData(ci,0,0);
   const nt=new U.CanvasTexture(nc),ct=new U.CanvasTexture(cc);[nt,ct].forEach(t=>{t.wrapS=t.wrapT=U.RepeatWrapping;t.anisotropy=renderer.capabilities.getMaxAnisotropy();});
   nt.encoding=U.LinearEncoding;return SNOWC[kind]={n:nt,c:ct};}
