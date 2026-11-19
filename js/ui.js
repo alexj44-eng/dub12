@@ -398,15 +398,14 @@ function adminAct(a){if(!isAdmin())return;
 function renderAdmin(){$('adminInfo').innerHTML='Signed in as <b>'+(save.acct?save.acct.u:'')+'</b> · Level '+level()+' · '+coinHTML(save.coins)+'<br>Every cosmetic, ski, trick, map and pass tier is unlocked while you are signed in.';}
 function boot(){resize();
   loadAssets('assets/dub12.glb',()=>{
-    try{sessionStorage.removeItem('dub12_retry');}catch(_){}
+    if(/[?&]retry=/.test(location.search))try{history.replaceState(null,'',location.pathname+location.hash);}catch(_){}
     buildLobby();initRiders();hydrateCustom();wire();applySettings();setMode('lobby');$('loading').classList.add('hide');
     if(typeof initAccounts==='function')initAccounts();
     if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{redrawAllSkis();});
     requestAnimationFrame(frame);
   },e=>{console.error(e);
-    // first failure: reload once automatically (bypassing stale cache); after that show a retry button instead of a dead end
-    let tried=0;try{tried=+sessionStorage.getItem('dub12_retry')||0;}catch(_){}
-    if(tried<1){try{sessionStorage.setItem('dub12_retry',tried+1);}catch(_){}location.reload();return;}
-    const p_=$('loading').querySelector('p');p_.innerHTML='Could not load the 3D models — check your connection.<br><button id="ldRetry" style="margin-top:14px;padding:10px 22px;border:0;border-radius:10px;background:#ffd23f;color:#141416;font:800 15px Inter,sans-serif;cursor:pointer">RETRY</button>';
-    $('ldRetry').onclick=()=>{try{sessionStorage.removeItem('dub12_retry');}catch(_){}location.reload();};});}
+    // first failure: reload once (marked in the URL, so it can never loop); after that show the reason + a retry button
+    if(!/[?&]retry=/.test(location.search)){location.replace(location.pathname+'?retry=1'+location.hash);return;}
+    const log=(window.DUB12_LOG||[]).slice(-3).join('<br>').replace(/</g,'&lt;').replace(/&lt;br>/g,'<br>');
+    if(window.DUB12_FAIL)window.DUB12_FAIL('Could not load the 3D models ('+String(e).slice(0,80).replace(/</g,'&lt;')+').<br><span style="opacity:.6;font-size:11px">'+log+'</span>');});}
 boot();
