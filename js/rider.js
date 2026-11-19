@@ -39,9 +39,10 @@ function loadAssets(url,onDone,onErr){
   // crash recovery: we note which pack is being decoded; if the browser tab crashes mid-decode (seen in Brave), the next load
   // finds the note and skips the compressed copy of that pack, loading the plain backup instead. Remembered for next visits too.
   const LS={get:k=>{try{return localStorage.getItem(k);}catch(e){return null;}},set:(k,v)=>{try{v===null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}}};
-  const crashed=LS.get('dub12_decoding');if(crashed){LS.set('dub12_plain_'+crashed,'1');LS.set('dub12_decoding',null);console.warn('previous load crashed while decoding',crashed);}
+  ['models','extra','gear','env'].forEach(n=>LS.set('dub12_plain_'+n,null));   // old long-lived markers: no longer used
+  const crashed=LS.get('dub12_decoding');if(crashed){LS.set('dub12_decoding',null);console.warn('previous load crashed while decoding',crashed);}
   const one=async(n,i)=>{const opt=n!=='models';if(opt&&performance.now()-t0>150000){console.warn('skipping optional pack',n);return null;}
-    const plain=!!window.DUB12_SAFE||LS.get('dub12_plain_'+n)==='1';let b=null,g=null;
+    const plain=!!window.DUB12_SAFE||crashed===n;   // plain copy only for the pack that crashed last time (this load only)let b=null,g=null;
     if(!plain){step('decoding '+(i+1)+'/4 ('+n+')…');LS.set('dub12_decoding',n);b=await dl[n];g=b&&await parseT(b,15000);LS.set('dub12_decoding',null);}
     if(!g){console.warn('using uncompressed backup for',n);step((plain?'loading ':'using backup copy of ')+n+' ('+(i+1)+'/4)…');const rb=await getBuf('assets/raw/'+n+'.glb'+V,2,120000);g=rb&&await parseT(rb,opt?15000:60000);}
     return g;};
