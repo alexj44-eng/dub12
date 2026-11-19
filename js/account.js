@@ -29,7 +29,7 @@ async function onAuth(u){if(u&&FB.signingUp)return;FB.user=u;
   FB.loading=false;save.set.name=FB.name;persistLocalOnly();refreshAcctChip();closeAccount();}
 function applyCloudSave(cs){const acct=save.acct;save=Object.assign(defaultSave(),cs);save.acct=acct;fixSet();ensureQuests();hydrateCustom();
   if(sk){sk.gogMode=save.set.gog;sk.apply(validLoad(),save.body);sk.setPoles(save.set.poles);}for(const t in THUMB)delete THUMB[t];applySettings();if(mode==='lobby')setView(view);refreshWallet();}
-function persistLocalOnly(){try{localStorage.setItem('dub12',JSON.stringify(save));}catch(e){}}
+function persistLocalOnly(){try{localStorage.setItem('dub12',JSON.stringify(save,(k,v)=>k==='img'?undefined:v));}catch(e){}}
 function cleanSave(){const s=JSON.parse(JSON.stringify(save));delete s.acct;if(s.custom)s.custom=s.custom.map(c=>c&&c.url?{url:c.url}:null);return JSON.stringify(s);}
 function cloudSaveSoon(){if(!FB.user||FB.loading||FB.noSync)return;clearTimeout(FB.saveT);FB.saveT=setTimeout(cloudSaveNow,2500);}
 async function cloudSaveNow(){if(!FB.user||FB.noSync)return;try{await FB.db.collection('users').doc(FB.user.uid).set({name:FB.name,save:cleanSave(),updated:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(e){console.warn('cloud save failed',e);}}

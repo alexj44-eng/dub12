@@ -3,7 +3,8 @@
 const $=id=>document.getElementById(id);
 const cv=$('c');
 // the post-processing composer already renders into a 4x MSAA target, so the canvas itself only needs antialiasing when post-fx are off
-const renderer=new U.WebGLRenderer({canvas:cv,antialias:!(typeof save!=='undefined'&&save&&save.set&&save.set.fx!==0),alpha:true,powerPreference:'high-performance'});
+const renderer=new U.WebGLRenderer({canvas:cv,antialias:!(typeof save!=='undefined'&&save&&save.set&&save.set.fx!==0),alpha:true,powerPreference:window.DUB12_SAFE?'default':'high-performance'});
+if(window.DUB12_SAFE&&typeof save!=='undefined'&&save&&save.set)Object.assign(save.set,{fx:0,shadows:0,res:0});   // safe mode: basic graphics
 renderer.setClearColor(0x000000,0);renderer.shadowMap.enabled=true;renderer.shadowMap.type=U.PCFSoftShadowMap;
 
 let W=1,H=1;

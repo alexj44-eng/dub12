@@ -400,10 +400,13 @@ function boot(){window.DUB12_STEP&&DUB12_STEP('engine loaded');resize();
   loadAssets('assets/dub12.glb',()=>{
     if(/[?&]retry=/.test(location.search))try{history.replaceState(null,'',location.pathname+location.hash);}catch(_){}
     window.DUB12_STEP&&DUB12_STEP('building the lobby…');
-    buildLobby();initRiders();hydrateCustom();wire();applySettings();setMode('lobby');$('loading').classList.add('hide');
+    if(window.DUB12_SAFE&&save&&save.set)Object.assign(save.set,{fx:0,shadows:0,res:0});
+    (save.custom||[]).forEach(d=>{if(d&&d.img&&!(d.img instanceof HTMLImageElement))delete d.img;});hydrateCustom();
+    buildLobby();try{initRiders();}catch(err){console.error('outfit failed, using defaults',err);save.load=Object.assign({},defaultSave().load);initRiders();}wire();applySettings();setMode('lobby');$('loading').classList.add('hide');
     if(typeof initAccounts==='function')initAccounts();
     if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{redrawAllSkis();});
     requestAnimationFrame(frame);
+    setTimeout(()=>window.DUB12_BOOT_OK&&DUB12_BOOT_OK(),4000);   // survived the first seconds of rendering too
   },e=>{console.error(e);
     // first failure: reload once (marked in the URL, so it can never loop); after that show the reason + a retry button
     if(!/[?&]retry=/.test(location.search)){location.replace(location.pathname+'?retry=1'+location.hash);return;}

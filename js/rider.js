@@ -22,7 +22,7 @@ function loadAssets(url,onDone,onErr){
   // hosted site: small Draco-compressed binary packs (tools/compress.py), fetched in parallel and cached by the browser.
   // Hardened: every pack is retried (with a cache-bypassing reload) and, if the compressed copy still can't be read,
   // the uncompressed backup in assets/raw/ is used instead. The decoder is served from the site itself (no CDN needed).
-  if(U.DRACOLoader){const D=new U.DRACOLoader();D.setDecoderPath(window.DUB12_DRACO||'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/gltf/');L.setDRACOLoader(D);}
+  if(U.DRACOLoader&&!window.DUB12_SAFE){const D=new U.DRACOLoader();D.setDecoderPath(window.DUB12_DRACO||'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/gltf/');L.setDRACOLoader(D);}
   const V=window.DUB12_V?'?v='+window.DUB12_V:'',wait=ms=>new Promise(r=>setTimeout(r,ms));
   const getBuf=async(url,tries,ms)=>{for(let i=0;i<tries;i++){try{const ctl=window.AbortController?new AbortController():null,t=setTimeout(()=>ctl&&ctl.abort(),ms||25000);
       const r=await fetch(url+(i?(url.includes('?')?'&':'?')+'r='+Date.now():''),{signal:ctl?ctl.signal:undefined,cache:i?'reload':'default'});clearTimeout(t);
@@ -34,14 +34,14 @@ function loadAssets(url,onDone,onErr){
   if(L.dracoLoader&&L.dracoLoader.setWorkerLimit)L.dracoLoader.setWorkerLimit(1);   // one decoder at a time: far less memory, no stalled workers
   // download every pack at once, but decode them one by one (required models first); a pack that won't decode in 15 s
   // switches to its uncompressed backup, and optional packs are skipped if they still aren't ready after ~45 s in total
-  const NAMES=['models','extra','gear','env'],dl={};NAMES.forEach(n=>{dl[n]=getBuf('assets/'+n+'.glb'+V,2);});
+  const NAMES=['models','extra','gear','env'],dl={};if(!window.DUB12_SAFE)NAMES.forEach(n=>{dl[n]=getBuf('assets/'+n+'.glb'+V,2);});
   const parseT=(buf,ms)=>Promise.race([parse(buf),wait(ms).then(()=>null)]);
   // crash recovery: we note which pack is being decoded; if the browser tab crashes mid-decode (seen in Brave), the next load
   // finds the note and skips the compressed copy of that pack, loading the plain backup instead. Remembered for next visits too.
   const LS={get:k=>{try{return localStorage.getItem(k);}catch(e){return null;}},set:(k,v)=>{try{v===null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}}};
   const crashed=LS.get('dub12_decoding');if(crashed){LS.set('dub12_plain_'+crashed,'1');LS.set('dub12_decoding',null);console.warn('previous load crashed while decoding',crashed);}
   const one=async(n,i)=>{const opt=n!=='models';if(opt&&performance.now()-t0>150000){console.warn('skipping optional pack',n);return null;}
-    const plain=LS.get('dub12_plain_'+n)==='1';let b=null,g=null;
+    const plain=!!window.DUB12_SAFE||LS.get('dub12_plain_'+n)==='1';let b=null,g=null;
     if(!plain){step('decoding '+(i+1)+'/4 ('+n+')…');LS.set('dub12_decoding',n);b=await dl[n];g=b&&await parseT(b,15000);LS.set('dub12_decoding',null);}
     if(!g){console.warn('using uncompressed backup for',n);step((plain?'loading ':'using backup copy of ')+n+' ('+(i+1)+'/4)…');const rb=await getBuf('assets/raw/'+n+'.glb'+V,2,120000);g=rb&&await parseT(rb,opt?15000:60000);}
     return g;};
@@ -177,7 +177,7 @@ function shade(c,k){const C=new U.Color(c);if(k<0)C.multiplyScalar(1+k);else C.l
 const SKITEX={},SKICV={};
 function skiCanvas(id){if(SKICV[id])return SKICV[id];const c=document.createElement('canvas');c.width=128;c.height=1024;SKICV[id]=c;drawSki(id);return c;}
 function drawSki(id){const c=SKICV[id],g=c.getContext('2d');g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,128,1024);
-  if(id.startsWith('custom')){const d=save.custom[+id.slice(6)];if(d&&d.img){const im=d.img;g.save();g.translate(0,1024);g.rotate(-Math.PI/2);g.drawImage(im,0,0,1024,128);g.restore();}else{g.fillStyle='#e8ebf2';g.fillRect(0,0,128,1024);skiText(g,128,1024,'DESIGN ME','#9aa7c2',512,40);}}
+  if(id.startsWith('custom')){const d=save.custom[+id.slice(6)];const ok=d&&d.img&&(d.img instanceof HTMLImageElement||d.img instanceof HTMLCanvasElement)&&(d.img.width||d.img.naturalWidth)&&(d.img.complete!==false);if(ok){const im=d.img;g.save();g.translate(0,1024);g.rotate(-Math.PI/2);g.drawImage(im,0,0,1024,128);g.restore();}else{g.fillStyle='#e8ebf2';g.fillRect(0,0,128,1024);skiText(g,128,1024,'DESIGN ME','#9aa7c2',512,40);}}
   else{g.scale(2,2);SKI_ART[IDX[id].art](g,64,512);}
   if(SKITEX[id])SKITEX[id].needsUpdate=true;}
 function skiTex(id){if(!SKITEX[id]){const t=new U.CanvasTexture(skiCanvas(id));t.anisotropy=8;SKITEX[id]=t;}return SKITEX[id];}

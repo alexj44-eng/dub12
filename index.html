@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <script>window.DUB12_DRACO='lib/draco/';</script>
-<script>window.DUB12_V='mwo76psx';</script>
+<script>window.DUB12_V='mwo7d21r';</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DUB12</title>
@@ -310,7 +310,7 @@ button{font-family:inherit;color:inherit}
 #spane input[type=text]{font:700 13px Inter;padding:7px 10px;border-radius:8px;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;width:150px;margin:0}
 #fps{position:absolute;left:18px;bottom:18px;font:800 11px Inter;background:rgba(11,16,36,.5);padding:4px 8px;border-radius:6px}
 </style>
-<link rel="preload" href="assets/models.glb?v=mwo76psx" as="fetch" crossorigin><link rel="preload" href="assets/env.glb?v=mwo76psx" as="fetch" crossorigin><link rel="preload" href="assets/gear.glb?v=mwo76psx" as="fetch" crossorigin><link rel="preload" href="assets/extra.glb?v=mwo76psx" as="fetch" crossorigin>
+<link rel="preload" href="assets/models.glb?v=mwo7d21r" as="fetch" crossorigin><link rel="preload" href="assets/env.glb?v=mwo7d21r" as="fetch" crossorigin><link rel="preload" href="assets/gear.glb?v=mwo7d21r" as="fetch" crossorigin><link rel="preload" href="assets/extra.glb?v=mwo7d21r" as="fetch" crossorigin>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -321,8 +321,13 @@ button{font-family:inherit;color:inherit}
   var p=L.querySelector('p');p.style.cssText='max-width:560px;line-height:1.6;letter-spacing:.06em';
   p.innerHTML=msg+'<br><button onclick="try{sessionStorage.removeItem(\'dub12_retry\')}catch(e){};location.reload()" style="margin-top:14px;padding:10px 22px;border:0;border-radius:10px;background:#ffd23f;color:#141416;font:800 15px Inter,sans-serif;cursor:pointer">RETRY</button>';}
   window.DUB12_FAIL=show;
+  // crash-proof boot: every step is written to storage; if the previous visit never finished loading (tab crashed),
+  // this visit starts in SAFE MODE (plain model files, no decoder, basic graphics) and remembers it
+  var LSg=function(k){try{return localStorage.getItem(k)}catch(e){return null}},LSs=function(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}};
+  var prevBoot=LSg('dub12_boot');LSs('dub12_safe',null);if(prevBoot&&prevBoot!=='building the lobby…'&&prevBoot!=='starting game…'){window.DUB12_SAFE=prevBoot;}
+  LSs('dub12_boot','starting');window.DUB12_BOOT_OK=function(){LSs('dub12_boot',null);};
   // live progress line under the loading text, so a stall shows exactly where it stopped
-  window.DUB12_STEP=function(t){try{var L=document.getElementById('loading');if(!L||shown)return;var d=document.getElementById('ldStep');if(!d){d=document.createElement('div');d.id='ldStep';d.style.cssText='margin-top:10px;font:600 11px Inter,sans-serif;opacity:.55;letter-spacing:.05em';L.appendChild(d);}d.textContent=t+'  ·  '+Math.round(performance.now()/1000)+'s';window.DUB12_LAST=t;}catch(e){}};
+  window.DUB12_STEP=function(t){try{var L=document.getElementById('loading');if(!L||shown)return;var d=document.getElementById('ldStep');if(!d){d=document.createElement('div');d.id='ldStep';d.style.cssText='margin-top:10px;font:600 11px Inter,sans-serif;opacity:.55;letter-spacing:.05em';L.appendChild(d);}d.textContent=(window.DUB12_SAFE?'safe mode · ':'')+t+'  ·  '+Math.round(performance.now()/1000)+'s';window.DUB12_LAST=t;if(t!==window.DUB12_LASTW){window.DUB12_LASTW=t;LSs('dub12_boot',t);}}catch(e){}};
   setInterval(function(){if(window.DUB12_LAST&&!shown)DUB12_STEP(window.DUB12_LAST);},1000);   // ticking clock: if it stops, the browser tab itself has frozen or crashed
   window.addEventListener('unhandledrejection',function(e){setTimeout(function(){show('Loading stopped: '+String(e&&e.reason).replace(/</g,'&lt;').slice(0,160));},1500);});
   DUB12_STEP('starting…');
@@ -479,18 +484,18 @@ button{font-family:inherit;color:inherit}
 <script src="lib/EffectComposer.js"></script>
 <script src="lib/RenderPass.js"></script>
 <script src="lib/ShaderPass.js"></script>
-<script src="lib/UnrealBloomPass.js"></script><script src="js/color.js?v=mwo76psx"></script>
-<script src="js/resorts_data.js?v=mwo76psx"></script>
-<script src="js/data.js?v=mwo76psx"></script>
-<script src="js/audio.js?v=mwo76psx"></script>
-<script src="js/rider.js?v=mwo76psx"></script>
-<script src="js/world.js?v=mwo76psx"></script>
-<script src="js/resort.js?v=mwo76psx"></script>
-<script src="js/lobby.js?v=mwo76psx"></script>
-<script src="js/game.js?v=mwo76psx"></script>
-<script src="js/fx.js?v=mwo76psx"></script>
-<script src="js/ui.js?v=mwo76psx"></script>
-<script src="js/firebase-config.js?v=mwo76psx"></script>
-<script src="js/account.js?v=mwo76psx"></script>
+<script src="lib/UnrealBloomPass.js"></script><script src="js/color.js?v=mwo7d21r"></script>
+<script src="js/resorts_data.js?v=mwo7d21r"></script>
+<script src="js/data.js?v=mwo7d21r"></script>
+<script src="js/audio.js?v=mwo7d21r"></script>
+<script src="js/rider.js?v=mwo7d21r"></script>
+<script src="js/world.js?v=mwo7d21r"></script>
+<script src="js/resort.js?v=mwo7d21r"></script>
+<script src="js/lobby.js?v=mwo7d21r"></script>
+<script src="js/game.js?v=mwo7d21r"></script>
+<script src="js/fx.js?v=mwo7d21r"></script>
+<script src="js/ui.js?v=mwo7d21r"></script>
+<script src="js/firebase-config.js?v=mwo7d21r"></script>
+<script src="js/account.js?v=mwo7d21r"></script>
 </body>
 </html>

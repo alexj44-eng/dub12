@@ -217,7 +217,7 @@ function defaultSave(){return {v:3,coins:500,xp:0,owned:ITEMS.filter(i=>i.src===
   load:{jacket:'j_puffer',pants:'p_triple',gloves:'g_black',helmet:'h_black',goggles:'o_classic',mask:'m_none',boots:'b_free_blk',skis:'s_chev'},tricks:{g:['t_mute','t_safety','t_japan'],style:'t_cork'},keys:null,set:{vol:.7,shadows:1,res:1,view:'third',zoom:1,fov:62,rot:1,hints:1},acct:null,mig5:true,
   body:{skin:1,hair:'buzz',hairColor:4,eye:0,build:'regular',height:'avg',hood:false,jc:0,sc:1},mig4:true,custom:[null,null,null],best:{},map:'park',gm:'battle',q:null,claimed:[],seen:{}};}
 function loadSave(){try{const s=JSON.parse(localStorage.getItem('dub12'));if(s&&s.v===3){save=Object.assign(defaultSave(),s);if(!s.mig5){const d=defaultSave();save.load.mask=save.load.mask||'m_none';d.owned.forEach(i=>{if(!save.owned.includes(i))save.owned.push(i);});save.tricks=d.tricks;save.set=d.set;save.mig5=true;}if(!save.owned.includes('o_none'))save.owned.push('o_none');if(!s.mig4){['j_triple','p_triple'].forEach(i=>{if(!save.owned.includes(i))save.owned.push(i);});save.load.jacket='j_triple';save.load.pants='p_triple';save.body.hood=false;save.mig4=true;persist();}return;}}catch(e){}save=defaultSave();}
-function persist(){try{localStorage.setItem('dub12',JSON.stringify(save));}catch(e){}}
+function persist(){try{localStorage.setItem('dub12',JSON.stringify(save,(k,v)=>k==='img'?undefined:v));}catch(e){}}
 loadSave();
 const level=()=>1+Math.floor(save.xp/XP_PER_LVL);
 function ensureQuests(){const d=today();if(!save.q||save.q.day!==d){save.q={day:d,list:questsFor(d)};persist();}}
