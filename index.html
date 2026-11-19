@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <script>window.DUB12_DRACO='lib/draco/';</script>
-<script>window.DUB12_V='mwo62m51';</script>
+<script>window.DUB12_V='mwo6rxnj';</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DUB12</title>
@@ -310,7 +310,7 @@ button{font-family:inherit;color:inherit}
 #spane input[type=text]{font:700 13px Inter;padding:7px 10px;border-radius:8px;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;width:150px;margin:0}
 #fps{position:absolute;left:18px;bottom:18px;font:800 11px Inter;background:rgba(11,16,36,.5);padding:4px 8px;border-radius:6px}
 </style>
-<link rel="preload" href="assets/models.glb?v=mwo62m51" as="fetch" crossorigin><link rel="preload" href="assets/env.glb?v=mwo62m51" as="fetch" crossorigin><link rel="preload" href="assets/gear.glb?v=mwo62m51" as="fetch" crossorigin><link rel="preload" href="assets/extra.glb?v=mwo62m51" as="fetch" crossorigin>
+<link rel="preload" href="assets/models.glb?v=mwo6rxnj" as="fetch" crossorigin><link rel="preload" href="assets/env.glb?v=mwo6rxnj" as="fetch" crossorigin><link rel="preload" href="assets/gear.glb?v=mwo6rxnj" as="fetch" crossorigin><link rel="preload" href="assets/extra.glb?v=mwo6rxnj" as="fetch" crossorigin>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -321,11 +321,15 @@ button{font-family:inherit;color:inherit}
   var p=L.querySelector('p');p.style.cssText='max-width:560px;line-height:1.6;letter-spacing:.06em';
   p.innerHTML=msg+'<br><button onclick="try{sessionStorage.removeItem(\'dub12_retry\')}catch(e){};location.reload()" style="margin-top:14px;padding:10px 22px;border:0;border-radius:10px;background:#ffd23f;color:#141416;font:800 15px Inter,sans-serif;cursor:pointer">RETRY</button>';}
   window.DUB12_FAIL=show;
+  // live progress line under the loading text, so a stall shows exactly where it stopped
+  window.DUB12_STEP=function(t){try{var L=document.getElementById('loading');if(!L||shown)return;var d=document.getElementById('ldStep');if(!d){d=document.createElement('div');d.id='ldStep';d.style.cssText='margin-top:10px;font:600 11px Inter,sans-serif;opacity:.55;letter-spacing:.05em';L.appendChild(d);}d.textContent=t;}catch(e){}};
+  window.addEventListener('unhandledrejection',function(e){setTimeout(function(){show('Loading stopped: '+String(e&&e.reason).replace(/</g,'&lt;').slice(0,160));},1500);});
+  DUB12_STEP('starting…');
   window.DUB12_LOG=[];var w=console.warn,er=console.error;console.warn=function(){try{DUB12_LOG.push([].map.call(arguments,String).join(' ').slice(0,140))}catch(e){};return w.apply(console,arguments)};console.error=function(){try{DUB12_LOG.push([].map.call(arguments,String).join(' ').slice(0,140))}catch(e){};return er.apply(console,arguments)};
   // 3D graphics available?
   try{var c=document.createElement('canvas'),gl=c.getContext('webgl2')||c.getContext('webgl');if(!gl)setTimeout(function(){show('3D graphics (WebGL) are turned off in this browser.<br>In Brave: click the lion icon and turn Shields off for this site, and make sure Settings → System → "Use graphics acceleration" is on. Then retry.');},50);}catch(e){}
   window.addEventListener('error',function(e){if(e&&e.message)setTimeout(function(){show('Something went wrong while loading: '+String(e.message).replace(/</g,'&lt;').slice(0,160)+'<br>If you use Brave, try turning Shields off for this site.');},1500);});
-  setTimeout(function(){show('This is taking longer than it should. Check your connection, or turn browser shields/ad-blockers off for this site.');},30000);
+  setTimeout(function(){show('Stuck at: '+((document.getElementById('ldStep')||{}).textContent||'?')+'<br>This is taking longer than it should. Check your connection, or turn browser shields/ad-blockers off for this site.');},20000);
 })();
 </script>
 
@@ -474,18 +478,18 @@ button{font-family:inherit;color:inherit}
 <script src="lib/EffectComposer.js"></script>
 <script src="lib/RenderPass.js"></script>
 <script src="lib/ShaderPass.js"></script>
-<script src="lib/UnrealBloomPass.js"></script><script src="js/color.js?v=mwo62m51"></script>
-<script src="js/resorts_data.js?v=mwo62m51"></script>
-<script src="js/data.js?v=mwo62m51"></script>
-<script src="js/audio.js?v=mwo62m51"></script>
-<script src="js/rider.js?v=mwo62m51"></script>
-<script src="js/world.js?v=mwo62m51"></script>
-<script src="js/resort.js?v=mwo62m51"></script>
-<script src="js/lobby.js?v=mwo62m51"></script>
-<script src="js/game.js?v=mwo62m51"></script>
-<script src="js/fx.js?v=mwo62m51"></script>
-<script src="js/ui.js?v=mwo62m51"></script>
-<script src="js/firebase-config.js?v=mwo62m51"></script>
-<script src="js/account.js?v=mwo62m51"></script>
+<script src="lib/UnrealBloomPass.js"></script><script src="js/color.js?v=mwo6rxnj"></script>
+<script src="js/resorts_data.js?v=mwo6rxnj"></script>
+<script src="js/data.js?v=mwo6rxnj"></script>
+<script src="js/audio.js?v=mwo6rxnj"></script>
+<script src="js/rider.js?v=mwo6rxnj"></script>
+<script src="js/world.js?v=mwo6rxnj"></script>
+<script src="js/resort.js?v=mwo6rxnj"></script>
+<script src="js/lobby.js?v=mwo6rxnj"></script>
+<script src="js/game.js?v=mwo6rxnj"></script>
+<script src="js/fx.js?v=mwo6rxnj"></script>
+<script src="js/ui.js?v=mwo6rxnj"></script>
+<script src="js/firebase-config.js?v=mwo6rxnj"></script>
+<script src="js/account.js?v=mwo6rxnj"></script>
 </body>
 </html>

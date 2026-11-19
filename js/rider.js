@@ -30,8 +30,9 @@ function loadAssets(url,onDone,onErr){
     catch(e){console.warn('load',url,'attempt',i+1,e);await wait(500*(i+1));}}return null;};
   const parse=buf=>new Promise(res=>{let done=false;const t=setTimeout(()=>{if(!done){done=true;console.warn('parse timeout');res(null);}},20000);
     try{L.parse(buf,'',g=>{if(!done){done=true;clearTimeout(t);res(g);}},e=>{if(!done){done=true;clearTimeout(t);console.warn('parse failed',e);res(null);}});}catch(e){done=true;clearTimeout(t);res(null);}});
+  let got_=0;const step=t=>window.DUB12_STEP&&DUB12_STEP(t);step('downloading 3D models…');
   const loadPack=async n=>{let b=await getBuf('assets/'+n+'.glb'+V,2),g=b&&await parse(b);
-    if(!g){console.warn('using uncompressed backup for',n);b=await getBuf('assets/raw/'+n+'.glb'+V,3);g=b&&await parse(b);}return g;};
+    if(!g){console.warn('using uncompressed backup for',n);step('using backup models ('+n+')…');b=await getBuf('assets/raw/'+n+'.glb'+V,3);g=b&&await parse(b);}step('models ready '+(++got_)+'/4');return g;};
   Promise.all(['models','env','gear','extra'].map(loadPack)).then(([m,e,g,x])=>{if(!m){onErr&&onErr('models');return;}take(m);if(e)take(e);
     if(g)prep(g);if(x)prep(x);onDone();}).catch(err=>{console.error('asset load failed',err);onErr&&onErr(err);});
 }

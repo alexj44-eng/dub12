@@ -396,9 +396,10 @@ function adminAct(a){if(!isAdmin())return;
   else if(a==='reset'){if(!$('adminTools').dataset.arm){$('adminTools').dataset.arm=1;toast('Press reset again to wipe progress');return;}const acct=save.acct;save=defaultSave();save.acct=acct;ensureQuests();sk.apply(save.load,save.body);toast('Progress reset');}
   delete $('adminTools').dataset.arm;persist();refreshWallet();renderAdmin();}
 function renderAdmin(){$('adminInfo').innerHTML='Signed in as <b>'+(save.acct?save.acct.u:'')+'</b> · Level '+level()+' · '+coinHTML(save.coins)+'<br>Every cosmetic, ski, trick, map and pass tier is unlocked while you are signed in.';}
-function boot(){resize();
+function boot(){window.DUB12_STEP&&DUB12_STEP('engine loaded');resize();
   loadAssets('assets/dub12.glb',()=>{
     if(/[?&]retry=/.test(location.search))try{history.replaceState(null,'',location.pathname+location.hash);}catch(_){}
+    window.DUB12_STEP&&DUB12_STEP('building the lobby…');
     buildLobby();initRiders();hydrateCustom();wire();applySettings();setMode('lobby');$('loading').classList.add('hide');
     if(typeof initAccounts==='function')initAccounts();
     if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{redrawAllSkis();});
