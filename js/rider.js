@@ -30,11 +30,19 @@ function loadAssets(url,onDone,onErr){
     catch(e){console.warn('load',url,'attempt',i+1,e);await wait(500*(i+1));}}return null;};
   const parse=buf=>new Promise(res=>{let done=false;const t=setTimeout(()=>{if(!done){done=true;console.warn('parse timeout');res(null);}},20000);
     try{L.parse(buf,'',g=>{if(!done){done=true;clearTimeout(t);res(g);}},e=>{if(!done){done=true;clearTimeout(t);console.warn('parse failed',e);res(null);}});}catch(e){done=true;clearTimeout(t);res(null);}});
-  let got_=0;const step=t=>window.DUB12_STEP&&DUB12_STEP(t);step('downloading 3D models…');
-  const loadPack=async n=>{let b=await getBuf('assets/'+n+'.glb'+V,2),g=b&&await parse(b);
-    if(!g){console.warn('using uncompressed backup for',n);step('using backup models ('+n+')…');b=await getBuf('assets/raw/'+n+'.glb'+V,3);g=b&&await parse(b);}step('models ready '+(++got_)+'/4');return g;};
-  Promise.all(['models','env','gear','extra'].map(loadPack)).then(([m,e,g,x])=>{if(!m){onErr&&onErr('models');return;}take(m);if(e)take(e);
-    if(g)prep(g);if(x)prep(x);onDone();}).catch(err=>{console.error('asset load failed',err);onErr&&onErr(err);});
+  const step=t=>window.DUB12_STEP&&DUB12_STEP(t),t0=performance.now();step('downloading 3D models…');
+  if(L.dracoLoader&&L.dracoLoader.setWorkerLimit)L.dracoLoader.setWorkerLimit(1);   // one decoder at a time: far less memory, no stalled workers
+  // download every pack at once, but decode them one by one (required models first); a pack that won't decode in 15 s
+  // switches to its uncompressed backup, and optional packs are skipped if they still aren't ready after ~45 s in total
+  const NAMES=['models','extra','gear','env'],dl={};NAMES.forEach(n=>{dl[n]=getBuf('assets/'+n+'.glb'+V,2);});
+  const parseT=(buf,ms)=>Promise.race([parse(buf),wait(ms).then(()=>null)]);
+  const one=async(n,i)=>{const opt=n!=='models';if(opt&&performance.now()-t0>45000){console.warn('skipping optional pack',n);return null;}
+    step('decoding '+(i+1)+'/4 ('+n+')…');let b=await dl[n],g=b&&await parseT(b,15000);
+    if(!g){console.warn('using uncompressed backup for',n);step('using backup copy of '+n+'…');const rb=await getBuf('assets/raw/'+n+'.glb'+V,opt?1:3);g=rb&&await parseT(rb,opt?15000:60000);}
+    return g;};
+  (async()=>{const out={};for(let i=0;i<NAMES.length;i++){out[NAMES[i]]=await one(NAMES[i],i);if(i===0&&!out.models){onErr&&onErr('models');return;}}
+    take(out.models);if(out.env)take(out.env);if(out.gear)prep(out.gear);if(out.extra)prep(out.extra);step('starting game…');onDone();})()
+    .catch(err=>{console.error('asset load failed',err);onErr&&onErr(err);});
 }
 const mname=m=>(m.name||'').replace(/\.\d+$/,'');
 // DUB12 emblem (original): yellow sun disc with two red lightning bolts charging into it, red DUB12 wordmark underneath
