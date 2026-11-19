@@ -71,6 +71,10 @@ item({id:'j_clean',cat:'jacket',n:'Clean Puffer',c:0x141416,a:0x141416,t:0x14141
  ['h_chrome','Chrome Dome','pro',0xcfd6e4,0x1a1a20,'epic',null,1],['h_beanie_r','Red Beanie','beanie',0xc62f2f,0xffffff,'rare'],['h_beanie_y','Mustard Beanie','beanie',0xe0a526,0x2a2a30,'rare'],
  ['h_beanie_s','Striped Beanie','beanie',0x2a2a30,0x58d7ff,'epic'],['h_gold','Gold Lid','pro',0xd9a531,0x1a1a20,'legendary','pass',1],['h_teal','Teal Shell','shell',0x2bb3a3,0x1a1a20,'rare','pass']
 ].forEach(a=>item({id:a[0],cat:'helmet',n:a[1],style:a[2],c:a[3],a:a[4],rarity:a[5],src:a[6]||'shop',metal:a[7]}));
+// park lid (shell from the user's Cork 7 rider) — plain colours plus an original chrome-panel livery
+item({id:'h_park',cat:'helmet',n:'Park Lid Graphite',style:'park2',c:0x2e3238,a:0x15161a,rarity:'common',src:'starter'});
+item({id:'h_park_wht',cat:'helmet',n:'Park Lid White',style:'park2',c:0xeceef1,a:0x15161a,rarity:'rare'});
+item({id:'h_flash',cat:'helmet',n:'Chrome Flash',style:'park2',c:0xffffff,a:0x15161a,rarity:'legendary',src:'starter',liv:1});
 [
  ['o_none','No Goggles','none',0,0,0,'common','starter'],['o_classic','Classic White','frame',0xf2f2f0,0xc8921f,0xf2f2f0,'common','starter'],['o_fire','Fire Iridium','frame',0x111111,0xff7a1a,0x111111,'common','starter'],['o_ice','Ice Blue','frame',0xffffff,0x58d7ff,0xffffff,'common','starter'],
  ['o_chrome','Chrome','frame',0x222222,0xd8dde6,0x222222,'common'],['o_rose','Rose','frame',0x2b1b3d,0xff5d8f,0x2b1b3d,'rare'],['o_jade','Jade','rimless',0x111111,0x39d98a,0x111111,'rare'],
