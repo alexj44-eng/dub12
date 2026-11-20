@@ -24,7 +24,11 @@ async function onAuth(u){if(u&&FB.signingUp)return;FB.user=u;
   if(!u){FB.name=null;refreshAcctChip();let g=null;try{g=localStorage.getItem('dub12_guest')||sessionStorage.getItem('dub12_guest');}catch(e){}if(!g)openAccount('signup');return;}
   FB.loading=true;FB.noSync=true;   // never upload until this account's cloud save has loaded (a failed load must not overwrite it)
   try{const doc=await FB.db.collection('users').doc(u.uid).get();FB.noSync=false;
-    if(doc.exists&&doc.data().save){applyCloudSave(JSON.parse(doc.data().save));FB.name=doc.data().name||u.displayName;toast('Welcome back, <b>'+FB.name+'</b> · progress loaded');}
+    if(doc.exists&&doc.data().save){const cs=JSON.parse(doc.data().save);FB.name=doc.data().name||u.displayName;
+      // keep whichever save is further along: never let an older online copy wipe newer progress made on this device
+      const score=x=>(x.xp||0)*1e3+(x.coins||0)+((x.owned||[]).length)*50;
+      if(score(save)>score(cs)){await cloudSaveNow();toast('Welcome back, <b>'+FB.name+'</b> · this device had newer progress, saved online');}
+      else{applyCloudSave(cs);toast('Welcome back, <b>'+FB.name+'</b> · progress loaded');}}
     else{FB.name=u.displayName||'Rider';await cloudSaveNow();toast('Account ready · your progress now saves online');}
   }catch(e){console.warn('load save failed',e);FB.name=u.displayName||'Rider';toast('Couldn\'t reach your online save · playing offline, nothing will be overwritten');}
   FB.loading=false;save.set.name=FB.name;persistLocalOnly();refreshAcctChip();closeAccount();}
@@ -33,7 +37,7 @@ function applyCloudSave(cs){const acct=save.acct;save=Object.assign(defaultSave(
 function persistLocalOnly(){try{localStorage.setItem('dub12',JSON.stringify(save,(k,v)=>k==='img'?undefined:v));}catch(e){}}
 function cleanSave(){const s=JSON.parse(JSON.stringify(save));delete s.acct;if(s.custom)s.custom=s.custom.map(c=>c&&c.url?{url:c.url}:null);return JSON.stringify(s);}
 function cloudSaveSoon(){if(!FB.user||FB.loading||FB.noSync)return;clearTimeout(FB.saveT);FB.saveT=setTimeout(cloudSaveNow,2500);}
-async function cloudSaveNow(){if(!FB.user||FB.noSync)return;try{await FB.db.collection('users').doc(FB.user.uid).set({name:FB.name,save:cleanSave(),updated:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(e){console.warn('cloud save failed',e);}}
+async function cloudSaveNow(){if(!FB.user||FB.noSync)return;try{await FB.db.collection('users').doc(FB.user.uid).set({name:FB.name,save:cleanSave(),updated:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});FB.saveErr=0;}catch(e){console.warn('cloud save failed',e);if(!FB.saveErr){FB.saveErr=1;toast('Online save failed ('+(e.code||e.message||'error')+') · progress is kept on this device');}}}
 window.addEventListener('beforeunload',()=>{if(FB.user&&FB.saveT){clearTimeout(FB.saveT);cloudSaveNow();}});
 
 /* ---------- UI ---------- */

@@ -66,7 +66,7 @@ item({id:'j_green',cat:'jacket',n:'Forest Puffer',c:0x2f5e3c,a:0x141416,t:0x2f5e
 item({id:'j_hoodie',cat:'jacket',n:'Hoodie',c:0x3a3d44,a:0xffffff,t:0x3a3d44,rarity:'common',src:'starter',stripe:true,top:'hoodie',jc:1,sc:3});
 item({id:'j_ls',cat:'jacket',n:'Long Sleeve Tee',c:0xeceef1,a:0x141416,t:0xeceef1,rarity:'common',src:'starter',stripe:true,top:'ls',jc:3,sc:0});
 item({id:'j_tee',cat:'jacket',n:'T-Shirt',c:0x141416,a:0xeceef1,t:0x141416,rarity:'common',src:'starter',stripe:true,top:'tee',jc:0,sc:3});
-item({id:'j_bib',cat:'jacket',n:'Vest + Waffle Shirt',c:0x141416,a:0x3a3d44,t:0x141416,rarity:'common',src:'starter',stripe:true,bib:1,jc:8,sc:4});
+item({id:'j_bib',cat:'jacket',n:'Puffer + Race Bib',c:0x141416,a:0x3a3d44,t:0x141416,rarity:'common',src:'starter',stripe:true,bib:1,jc:8,sc:4});
 item({id:'j_clean',cat:'jacket',n:'Clean Puffer',c:0x141416,a:0x141416,t:0x141416,rarity:'common',src:'starter',stripe:false});
 [
  ['p_triple','Black Baggies',0x18181c,null,'common','starter'],['p_flare_cream','Cream Flares',0xe8e0cc,null,'common','starter'],['p_flare_burg','Burgundy Flares',0x5e1726,null,'common','starter'],['p_flare_denim','Denim Flares',0x2f4a78,null,'rare'],['p_navy','Navy',0x1b2247,null,'common','starter'],['p_black','Charcoal',0x24262e,null,'common','starter'],['p_tan','Desert Tan',0xb59a6e,null,'common'],

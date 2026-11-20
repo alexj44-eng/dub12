@@ -414,11 +414,12 @@ function makeRider(){
       const jc=JCOL[(bd&&bd.jc!==undefined)?bd.jc:0][1],sc=J.stripe===false?jc:JCOL[(bd&&bd.sc!==undefined)?bd.sc:1][1];
       M.jacket.color.setHex(jc);M.jacket.map=null;M.jacket.needsUpdate=true;M.hood.color.copy(M.jacket.color);M.hood.map=null;M.hood.needsUpdate=true;
       M.jacket_arm.color.copy(M.jacket.color);M.jacket_sh.color.copy(M.jacket.color);M.stripe.color.setHex(sc);
+      if(J.bib){M.stripe.color.setHex(jc);}   // clean puffer under the bib: no chest/arm stripe
       M.jacket_arm.userData.stripeU.value.copy(M.stripe.color);M.jacket_sh.userData.stripeU.value.copy(M.stripe.color);R.gogOverHood=!!R.gogOver;
       // two-tone: sleeves + shoulders in the second colour
       if(J.two){M.jacket_arm.color.setHex(sc);M.jacket_sh.color.setHex(sc);M.jacket_arm.userData.stripeU.value.setHex(sc);M.jacket_sh.userData.stripeU.value.setHex(sc);}
       // race bib: waffle-knit base layer (jacket colour) + vest in the second colour
-      const topMode=J.bib?'waffle':J.top==='tee'?'tee':J.top?'cotton':'puffer';swapShirt(topMode);
+      const topMode=J.top==='tee'?'tee':J.top?'cotton':'puffer';   // race bib = clean puffer jacket with the bib worn on topswapShirt(topMode);
       M.shirt.color.setHex(jc);M.shirt_arm.color.setHex(jc);M.cotton.color.setHex(jc);M.cotton_arm.color.setHex(jc);
       if(topMode!=='puffer'){M.stripe.color.setHex(jc);}torsoG.traverse(c=>{if(c.isMesh&&(c.material===M.zip||c.material===M.logo))c.visible=topMode==='puffer';});   // tees/hoodies/base layer: no chest stripe, zip or patch
       if(bibMesh){bibMesh.visible=!!(J.bib||J.top);if(bibMesh.visible){M.bib.map=J.bib?bibTex(sc,bd&&bd.bibNumber):teeTex(sc,J.top);M.bib.needsUpdate=true;}}
@@ -458,7 +459,7 @@ function makeRider(){
         if((v=C('skibase'))!==null){M.bind.color.setHex(v);M.ski_base.color.setHex(shade(v,-.4));}}
       if(bd){M.skin.color.setHex(BODY.skin[bd.skin]);M.lip.color.setHex(BODY.skin[bd.skin]).lerp(new U.Color(0xa4504a),.42).multiplyScalar(.88);
         const hc=BODY.hairColor[bd.hairColor];M.hair.color.setHex(hc);M.iris.color.setHex(BODY.eye[bd.eye]);
-        const clava=R.mask==='clava';for(const k in hairs)hairs[k].visible=k===bd.hair&&!clava&&!bd.hood;for(const k in tops)tops[k].visible=k===bd.hair&&helmetStyle==='none'&&!clava&&!bd.hood;ears.visible=!clava;R.hoodOn=!!bd.hood;hoodUp.visible=R.hoodOn;shirtables.forEach(c=>{if(c.userData.gTop)c.geometry=(shirtMode==='puffer'||R.hoodOn)?c.userData.g0:c.userData.gTop;});if(bibMesh)bibMesh.geometry=R.hoodOn?bibMesh.userData.gFull:bibMesh.userData.gLow;/* vest follows the shirt's neckline: no gap under a raised hood */hoodDown.visible=!R.hoodOn&&!J.bib;if(HV2){const vy=J.bib?1.0:1.12;hoodUp.scale.set(J.bib?1.08:1.16,vy,J.bib?1.06:1.14);hoodUp.position.y=hoodUp.userData.y0+(J.bib?1.2:0);}M.hstrap.visible=!R.hoodOn;
+        const clava=R.mask==='clava';for(const k in hairs)hairs[k].visible=k===bd.hair&&!clava&&!bd.hood;for(const k in tops)tops[k].visible=k===bd.hair&&helmetStyle==='none'&&!clava&&!bd.hood;ears.visible=!clava;R.hoodOn=!!bd.hood;hoodUp.visible=R.hoodOn;shirtables.forEach(c=>{if(c.userData.gTop)c.geometry=(shirtMode==='puffer'||R.hoodOn)?c.userData.g0:c.userData.gTop;});if(bibMesh)bibMesh.geometry=(R.hoodOn||shirtMode==='puffer')?bibMesh.userData.gFull:bibMesh.userData.gLow;/* vest follows the shirt's neckline: no gap under a raised hood */hoodDown.visible=!R.hoodOn&&!J.bib;if(HV2){const vy=J.bib?1.0:1.12;hoodUp.scale.set(J.bib?1.08:1.16,vy,J.bib?1.06:1.14);hoodUp.position.y=hoodUp.userData.y0+(J.bib?1.2:0);}M.hstrap.visible=!R.hoodOn;
         // one body type for everyone (realistic proportions)
         // slim, tall athletic build (matches the reference): narrow torso, thin limbs, long legs
         bs=1;R.hs=1;const T=V2?{tx:.84,ty:1,tz:.86,sh:6.75,arm:.84,leg:3.45,th:.76,sn:.72,kn:.64}:{tx:1,ty:1,tz:1,sh:8.35,arm:1,leg:3.9,th:1,sn:1,kn:1};
@@ -470,7 +471,7 @@ function makeRider(){
           const jf=bd.jf!==undefined?bd.jf:.3,pf=bd.pf!==undefined?bd.pf:.3,jk=1.22+.22*jf,lk=1.42+.4*pf;
           Object.assign(T,{tx:jk,ty:1.04,tz:jk*1.05,sh:GM.sh_x*.76*1.04,arm:1.38+.25*jf,leg:GM.hip_x*1.45/.9,th:lk,sn:lk*1.02,kn:1});hem=.8+1.2*pf;
           if(gHips)gHips.scale.set(1.3+.3*pf,1,1.3+.3*pf);T.kn=.62*lk/1.54;}
-        if(J.bib||J.top){const k=J.top==='hoodie'?.93:J.bib?.9:.86;T.tx*=k;T.tz*=k-.02;T.arm*=J.top==='hoodie'?.9:.8;}   // fitted base layer under the vest
+        if(J.top){const k=J.top==='hoodie'?.93:.86;T.tx*=k;T.tz*=k-.02;T.arm*=J.top==='hoodie'?.9:.8;}   // fitted base layer under the vest
         torsoG.scale.set(T.tx,T.ty,T.tz);const shY=GEAR?GM.sh_y+.6:13.3*T.ty,shZ=GEAR?GM.sh_z:0;SH[0].set(T.sh*(T.tx/.76),shY,shZ);SH[1].set(-T.sh*(T.tx/.76),shY,shZ);legX=T.leg;
         if(V2&&!GEAR){head.position.y=22.2*T.ty;}
         [...uarm,...farm].forEach(m=>{m.scale.x=m.scale.z=T.arm;});elb.forEach(m=>m.scale.setScalar(GEAR?T.arm*.62:T.arm));shoulder.forEach(m=>m.scale.setScalar((GEAR?T.arm*.66:T.arm)*(J.bib||J.top?.74:1)));   // slimmer shoulder caps under a vest/tee so the bib straps showhand.forEach(h=>h.scale.setScalar((GEAR?.6:V2?.7:1)*gloveK));   // gloves sized to the jacket cuffs

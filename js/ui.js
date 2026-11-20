@@ -123,7 +123,7 @@ function renderLocker(){
     if(lockCat==='jacket'){const row=(label,key,skip)=>{const l=document.createElement('div');l.className='lbl';l.style.gridColumn='1/-1';l.style.marginTop='8px';l.textContent=label;el.appendChild(l);
         const box=document.createElement('div');box.className='swrow';el.appendChild(box);
         JCOL.forEach((c,i)=>{const d=document.createElement('button');d.className='swd'+(save.body[key]===i?' on':'');d.title=c[0];d.style.background=hex(c[1]);d.onclick=()=>setB(key,i);box.appendChild(d);});};
-      row(IDX[save.load.jacket].bib?'Shirt colour':'Jacket colour','jc');if(IDX[save.load.jacket].stripe!==false&&!(sk&&sk.hasGear))row(IDX[save.load.jacket].bib?'Vest / bib colour':IDX[save.load.jacket].two?'Sleeve colour':IDX[save.load.jacket].top?'Print colour':'Stripe colour','sc');}
+      row('Jacket colour','jc');if(IDX[save.load.jacket].stripe!==false&&!(sk&&sk.hasGear))row(IDX[save.load.jacket].bib?'Vest / bib colour':IDX[save.load.jacket].two?'Sleeve colour':IDX[save.load.jacket].top?'Print colour':'Stripe colour','sc');}
     // colour pickers for pants and gloves (first swatch = the item's own colour)
     const crow=(label,key)=>{const l=document.createElement('div');l.className='lbl';l.style.gridColumn='1/-1';l.style.marginTop='8px';l.textContent=label;el.appendChild(l);
       const box=document.createElement('div');box.className='swrow';el.appendChild(box);const cur=save.body[key]===undefined?-1:save.body[key];
