@@ -136,6 +136,11 @@ const TRICKS=[
  {id:'t_blunt',k:'grab',n:'Blunt',d:'Tail grab with the skis poked out.',m:1.25,rarity:'rare'},
  {id:'t_truck',k:'grab',n:'Truck Driver',d:'Both hands, both tips, like a steering wheel.',m:1.4,rarity:'epic'},
  {id:'t_octo',k:'grab',n:'Octograb',d:'Both skis crossed and held. Pure style.',m:1.6,rarity:'legendary'},
+ {id:'t_stale',k:'grab',n:'Stalefish',d:'Back hand behind the legs to the outside of the opposite ski.',m:1.3,rarity:'rare'},
+ {id:'t_nose',k:'grab',n:'Nose',d:'Front hand reaches out to the tips.',m:1.15,rarity:'common'},
+ {id:'t_seat',k:'grab',n:'Seatbelt',d:'Front hand across the body to the tail.',m:1.35,rarity:'epic'},
+ {id:'t_dtail',k:'grab',n:'Double Tail',d:'Both hands back to both tails.',m:1.3,rarity:'rare'},
+ {id:'t_rocket',k:'grab',n:'Rocket',d:'Both hands to the tips, skis stretched out in front.',m:1.45,rarity:'epic'},
  {id:'t_cork',k:'style',n:'Cork',d:'Classic off-axis spin.',m:1,tilt:.45,rarity:'common',src:'starter'},
  {id:'t_flat',k:'style',n:'Flatspin',d:'Flat, sideways rotation.',m:1.1,tilt:1.25,rarity:'rare'},
  {id:'t_bio',k:'style',n:'Bio',d:'Back-and-over, front shoulder drops.',m:1.15,tilt:.8,rarity:'rare'},
@@ -184,8 +189,8 @@ MAPS.skicross.n='Ski Cross · Blue Mountain';MAPS.skicross.d=MAPS.skicross.d.rep
 {const SKY={q:['linear-gradient(#2d5fb8 0%,#8fb8ea 55%,#eef4fb 100%)',0xdce8f6],r:['linear-gradient(#1f5fc8 0%,#7fb4f2 50%,#e4f1ff 100%)',0xd4e6fb],o:[MAPS.resort.sky,MAPS.resort.fog]};
   Object.values(window.RESORT_DATA||{}).forEach((R,i)=>{const s=SKY[R.sky]||SKY.o,base={sky:s[0],fog:s[1],hemi:MAPS.resort.hemi,sun:MAPS.resort.sun,tex:'pow',tree:MAPS.resort.tree,rng:0xffffff,lvl:1,fr:1,rid:R.id};
     const sx=R.trails.find(t=>t[3]&&t[3].skix);
-    MAPS['r_'+R.id]=Object.assign({n:R.n,zone:R.zone,d:R.n+': '+R.trails.length+' real runs and '+R.lifts.length+' lifts laid out from the mountain map, terrain parks and a ski-cross course on '+(sx?sx[0]:'a blue run')+'. Ride the lifts or click the map to spawn anywhere.',diff:'Open world',pin:[-.6+i*.24,.5]},base);
-    if(sx)MAPS['x_'+R.id]=Object.assign({n:'Ski Cross · '+R.n,zone:R.n+' · '+sx[0],d:'Four riders out of the start gate on '+sx[0]+' at '+R.n+': banked berms, rollers, step-downs and jumps. First across the line wins.',diff:'Race',pin:[-.6+i*.24,.62],sx:1},base);});}
+    MAPS['r_'+R.id]=Object.assign({n:R.n,zone:R.zone,d:R.n+': '+R.trails.length+' real runs and '+R.lifts.length+' lifts laid out from the mountain map and terrain parks; '+(sx?sx[0]:'a blue run')+'. Ride the lifts or click the map to spawn anywhere.',diff:'Open world',pin:[-.6+i*.24,.5]},base);
+    /* ski cross races on these resorts were removed: Blue Mountain's L-Hill is the one ski cross course */});}
 const MODES={battle:{n:'Trick Battle',i:'⚔️',d:'You vs 3 riders. Top score wins.'},free:{n:'Freeride',i:'🎿',d:'Solo run for a high score.'},time:{n:'Time Trial',i:'⏱️',d:'Fastest to the finish line.'},
   skix:{n:'Ski Cross',i:'🏁',d:'4-rider race through berms and rollers.',hidden:1}};
 

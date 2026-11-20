@@ -5,7 +5,9 @@ const cv=$('c');
 // the post-processing composer already renders into a 4x MSAA target, so the canvas itself only needs antialiasing when post-fx are off
 const renderer=new U.WebGLRenderer({canvas:cv,antialias:!(typeof save!=='undefined'&&save&&save.set&&save.set.fx!==0),alpha:true,powerPreference:window.DUB12_SAFE?'default':'high-performance'});
 if(window.DUB12_SAFE&&typeof save!=='undefined'&&save&&save.set)Object.assign(save.set,{fx:0,shadows:0,res:0});   // safe mode: basic graphics
-renderer.setClearColor(0x000000,0);renderer.shadowMap.enabled=true;renderer.shadowMap.type=U.PCFSoftShadowMap;
+renderer.setClearColor(0x000000,0);// colour quality: sRGB output + filmic highlights so snow, fabric and goggles read cleanly
+if('outputEncoding' in renderer)renderer.outputEncoding=U.sRGBEncoding;if(U.ACESFilmicToneMapping!==undefined){renderer.toneMapping=U.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;}
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=U.PCFSoftShadowMap;
 
 let W=1,H=1;
 const cam=new U.PerspectiveCamera(62,1,5,60000),   /* near 5 (was 2): 2.5x more depth precision, less z-fighting on snow/decals */lcam=new U.PerspectiveCamera(30,1,1,12000);
@@ -82,18 +84,20 @@ function getUp(r){clearDebris(r);r.sk.gear(true);const z=Math.min(r.z,map.finish
   r.pitch=gPitch(x,z,0,1);if(r===p)camD={x:0,z:1};}
 let shake=0,fpsA=60;
 const clampH=h=>Math.max(-1.35,Math.min(1.35,h));
-/* rails: you lock in at whatever angle you arrive (sideways = front/backslide, straight = straight slide),
-   then hold your balance with A/D. F swaps, Q/R presses the nose/tail when sliding straight. */
+/* rails: easy to get on (they pull you in from the side and from above), no balance to hold.
+   You lock in at whatever angle you arrive (sideways = front/backslide, straight = straight slide).
+   On the rail: A/D spins the board 90° each tap, F swaps 180°, Q/R presses nose/tail, Space hops
+   (spin during the hop and land back on the same rail, or transfer to the next one). */
 function onRail(r,R,spinOn){endButter(r);const rel=norm(bodyYaw(r));
   r.mode='rail';r.rail=R;r.grindT=0;r.head=0;r.spin=0;r.yo=0;r.sw=false;r.ry=rel;r.sv=0;r.fv=0;
   r.railSide=Math.abs(Math.sin(rel))>.62;r.ryT=r.railSide?Math.sign(Math.sin(rel))*Math.PI/2:(Math.abs(rel)>Math.PI/2?Math.sign(rel||1)*Math.PI:0);
-  r.bal=(Math.random()-.5)*.25+Math.min(.35,Math.abs(r.vx)/900)*Math.sign(r.vx||0);r.balV=0;r.press=null;r.pressT=0;r.swaps=0;r.spinOn=spinOn||0;
-  r.vz=Math.max(150,r.vz);r.vx=0;r.y=R.yAt(r.z);r.grab=null;r.comp=.6;if(r===p)sfx('land',.35);}
+  r.bal=0;r.balV=0;r.railSpin=0;r.adPrev=0;r.press=null;r.pressT=0;r.swaps=0;r.spinOn=spinOn||0;
+  r.vz=Math.max(220,r.vz);r.vx=0;r.x=R.x;r.y=R.yAt(r.z);r.vy=0;r.grab=null;r.comp=.6;if(r===p)sfx('rail',R.box?0:1);}
 function railName(r){const R=r.rail,sw=Math.abs(norm(r.ryT))>2.5;
   const kind=r.railSide?(r.ryT>0?'Frontslide':'Backslide'):((sw?'Switch ':'')+(r.press&&r.pressT>.35?r.press+' Press':'Straight Slide'));
-  return (r.spinOn>=180?r.spinOn+' On ':'')+kind+(r.swaps?' · Swap'+(r.swaps>1?' x'+r.swaps:''):'')+' · '+R.name;}
+  return (r.spinOn>=180?r.spinOn+' On ':'')+kind+(r.railSpin?' · '+r.railSpin+' Spin':'')+(r.swaps?' · Swap'+(r.swaps>1?' x'+r.swaps:''):'')+' · '+R.name;}
 function leaveRail(r,pop){const gt=r.grindT,ry=r.ry,R=r.rail;r.vy=r.vyG+pop;startAir(r);
-  award(r,railName(Object.assign({},r,{rail:R})),gt*520*(r.railSide?1.15:1)*(r.press&&r.pressT>.35?1.3:1)+r.spinOn*1.6+r.swaps*260+(R.h>40?400:0));
+  award(r,railName(Object.assign({},r,{rail:R})),gt*520*(r.railSide?1.15:1)*(r.press&&r.pressT>.35?1.3:1)+r.spinOn*1.6+r.swaps*260+(r.railSpin||0)*3+(R.h>40?400:0));
   r.rail=null;r.ry=0;r.yo+=ry;r.head=0;r.bp=0;}
 const bodyYaw=r=>r.head+(r.sw?Math.PI:0)+r.spin+r.ry+r.yo+(r.bsp||0)+(r.hsk||0)*1.25*(r.hsd||1);
 
@@ -101,6 +105,7 @@ function step(r,dt){
   const I=r.inp;
   if(r.mode==='lift'){liftStep(r,dt);return;}
   if(r.mode==='tow'){towStep(r,dt);return;}
+  if(r.mode==='rope'){ropeStep(r,dt);return;}
   if(r.safeT>0)r.safeT-=dt;
   if(curMode==='skix'&&RACE&&!RACE.go){r.vx=r.vz=0;r.y=hAt(r.x,r.z);r.mode='ground';return;}   // waiting in the start gate
   if(r.crashT>0){r.crashT-=dt;if(r.crashT<=0){getUp(r);return;}}
@@ -108,7 +113,7 @@ function step(r,dt){
   if(!r.fin)r.time+=dt;
   const ST=r.stat||[3,3,3];
   if(r.mode!=='air'&&ctl){if(I.jump){r.charge=Math.min(1,r.charge+dt/.55);if(r.mode==='ground')r.wind+=((I.a-I.d)-r.wind)*Math.min(1,dt*4);}
-    else if(r.charge>0){pop=(POP0+POP1*r.charge)*(1+.06*(ST[1]-3));r.charge=0;}else r.wind*=Math.exp(-dt*8);}
+    else if(r.charge>0){pop=(POP0+POP1*r.charge)*(1+.06*(ST[1]-3));r.charge=0;if(r===p)sfx('pop');}else r.wind*=Math.exp(-dt*8);}
   r.comp*=Math.exp(-dt*5);r.yo*=Math.exp(-dt*8);
   const pz=r.z;
   if(r.mode==='ground'){
@@ -151,8 +156,7 @@ function step(r,dt){
     if(!r.fin&&r.z>map.finishZ){r.fin=true;if(r===p)st.finished=1;}
     // boxes have on-ramps you can ride straight onto; rails have to be jumped onto — ride into one and you go down
     if(ctl&&r.mode==='ground')for(const R of map.rails){
-      if(R.box&&pz<R.z1&&r.z>=R.z1&&Math.abs(r.x-R.x)<R.w+6&&Math.abs(r.y-R.yAt(R.z1))<R.h+30){onRail(r,R,0);break;}
-      if(!R.box&&pz<R.z1+2&&r.z>=R.z1+2&&Math.abs(r.x-R.x)<9&&R.yAt(r.z)-r.y>10){crash(r);r.vx=(r.x>=R.x?1:-1)*140;say(r,'Clipped the rail',0,true);break;}}
+      if(pz<R.z1+4&&r.z>=R.z1&&Math.abs(r.x-R.x)<R.w+18&&R.yAt(r.z)-r.y<R.h+60){onRail(r,R,0);if(r===p)st.slides++;break;}}
   }else if(r.mode==='air'){
     const py=r.y,lim=map.lim||map.hw+240;r.vy-=G*dt;r.x=Math.max(-lim,Math.min(lim,r.x+r.vx*dt));r.z+=r.vz*dt;r.y+=r.vy*dt;r.airT+=dt;
     const sp=Math.hypot(r.vx,r.vz)||1,dx=r.vx/sp,dz=r.vz/sp,k=Math.min(1,dt*10),tv=Math.atan2(r.vx,r.vz);
@@ -170,7 +174,7 @@ function step(r,dt){
       const GL=r===p?save.tricks.g:['t_mute','t_safety','t_japan'],gi=I.g1?0:I.g2?1:I.g3?2:-1,g=gi>=0&&GL[gi]?IDX[GL[gi]].n:null;r.grab=g;if(g){r.grabT+=dt;r.grabs[g]=(r.grabs[g]||0)+dt;}
     }else r.grab=null;
     r.roll*=1-Math.min(1,dt*6);r.bp*=1-Math.min(1,dt*8);r.steer*=1-Math.min(1,dt*8);
-    for(const R of map.rails)if(r.z>=R.z1&&r.z<=R.z2&&Math.abs(r.x-R.x)<R.w){const ry=R.yAt(r.z);if(py>=ry-4&&r.y<=ry+1&&r.vy<0){
+    for(const R of map.rails)if(r.z>=R.z1-6&&r.z<=R.z2-10&&Math.abs(r.x-R.x)<R.w+22&&r.airT>.08){const ry=R.yAt(Math.max(R.z1,r.z));if(py>=ry-16&&r.y<=ry+12&&r.vy<=0){
       const deg=Math.round(Math.abs(r.spinAcc)/(Math.PI/2))*90;if(ctl&&Math.abs(r.flipAcc)>Math.PI)scoreTrick(r,R.box?' to Box':' to Rail');onRail(r,R,ctl?deg:0);if(r===p)st.slides++;return;}}
     const gh=hAt(r.x,r.z);
     if(r.y<=gh){
@@ -193,15 +197,12 @@ function step(r,dt){
   }else{
     const R=r.rail,gz=(R.yAt(r.z+2)-R.yAt(r.z-2))/4;
     // steel is faster than plastic; gravity pulls you down a down-rail and slows you up a rainbow
-    r.vz=Math.max(90,r.vz+(-G*gz/(1+gz*gz)*.92-(R.box?34:16))*dt);r.z+=r.vz*dt;r.x+=(R.x-r.x)*Math.min(1,dt*14);r.vx=0;
+    r.vz=Math.max(170,r.vz+(-G*gz/(1+gz*gz)*.92-(R.box?34:16))*dt);r.z+=r.vz*dt;r.x+=(R.x-r.x)*Math.min(1,dt*14);r.vx=0;
     const ny=R.yAt(r.z);r.vyG=(ny-r.y)/dt;r.y=ny;r.grindT+=dt;r.roll=r.bal*.5;r.steer*=1-Math.min(1,dt*8);
     // balance: the board wants to tip; correct with A/D (bots balance by skill)
-    if(ctl){const inst=(R.box?.85:1.4)*(r.railSide?1:1.3)*(r.press?1.35:1);
-      r.balV+=(r.bal*inst*2.4+(Math.random()-.5)*3.4*inst)*dt;
-      if(r.bot)r.balV+=(-r.bal*7-r.balV*2.6)*(.45+r.bot.skill)*dt;else r.balV-=(I.a-I.d)*5.2*dt;
-      r.balV*=Math.exp(-dt*1.1);r.bal+=r.balV*dt;
-      if(Math.abs(r.bal)>1){startAir(r);r.vy=40;r.vx=Math.sign(r.bal)*-160;r.rail=null;r.ry=0;r.yo+=r.ryT;crash(r);say(r,'Lost balance',0,true);return;}
-      if(I.f&&!r.fPrev){r.ryT+=r.railSide?(r.ryT>0?-Math.PI:Math.PI):Math.PI;r.ryT=norm(r.ryT)||0;r.swaps++;r.bal*=.6;if(r===p)sfx('ui');}
+    if(ctl){r.bal=0;
+      const ad=r.bot?0:(I.a?1:0)-(I.d?1:0);if(ad&&ad!==r.adPrev){r.ryT=norm(r.ryT+ad*Math.PI/2);r.railSide=Math.abs(Math.sin(r.ryT))>.5;r.railSpin=(r.railSpin||0)+90;if(r===p)sfx('ui');}r.adPrev=ad;
+      if(I.f&&!r.fPrev){r.ryT+=r.railSide?(r.ryT>0?-Math.PI:Math.PI):Math.PI;r.ryT=norm(r.ryT)||0;r.swaps++;if(r===p)sfx('ui');}
       r.press=!r.railSide&&(I.bn||I.bt)?(I.bn?'Nose':'Tail'):null;if(r.press)r.pressT+=dt;}
     r.fPrev=I.f;
     r.ry+=norm(r.ryT-r.ry)*Math.min(1,dt*10);r.bp+=((r.press?(r.press==='Nose'?.3:-.3):0)-r.bp)*Math.min(1,dt*9);
@@ -269,23 +270,35 @@ function place(r,dt){const R=r.sk.root;r.sk.head.scale.setScalar((save.set.bighe
   if(r.mode==='ground'&&r.crashT<=0){const s=Math.sin(yw),c=Math.cos(yw);r.sk.flipG.rotation.x=gPitch(r.x,r.z,s,c)+r.bp;r.sk.flipG.rotation.z=-gPitch(r.x,r.z,c,-s)-r.roll*(r.sw?-1:1);}
   const g=r.mode==='ground',tuck=g&&r.inp.w&&!r.charge&&!r.fin&&r.crashT<=0;
   if(r.mode==='lift'){r.sk.flipG.rotation.set(0,0,0);r.sk.pose({sit:true},dt);return;}
-  if(r.mode==='tow'){const s=Math.sin(yw),c=Math.cos(yw);r.sk.flipG.rotation.set(gPitch(r.x,r.z,s,c),0,-gPitch(r.x,r.z,c,-s));r.sk.pose({crouch:.4,tow:true},dt);return;}
-  r.sk.pose({crouch:(g?(r.charge>0?.35+.65*r.charge:tuck?.8:.3):r.mode==='rail'?.45:.3)+r.comp*.5,tuck,air:r.mode==='air'&&r.airT>.12,grab:r.grab,steer:r.steer*(r.sw?-1:1),look:r.sw&&r.mode!=='air'?.85:0},dt);}
+  if(r.mode==='tow'||r.mode==='rope'){const s=Math.sin(yw),c=Math.cos(yw);r.sk.flipG.rotation.set(gPitch(r.x,r.z,s,c),0,-gPitch(r.x,r.z,c,-s));r.sk.pose({crouch:.4,tow:true},dt);return;}
+  const po={flexS:r.mode==='rail'?(r.rail&&r.rail.box?.25:.55):(g&&r.comp>.3?r.comp*.3:0),flexA:Math.max(-1,Math.min(1,(r.bp||0)*2.6)),crouch:(g?(r.charge>0?.35+.65*r.charge:tuck?.8:.3):r.mode==='rail'?.45:.3)+r.comp*.5,tuck,air:r.mode==='air'&&r.airT>.12,grab:r.grab,steer:r.steer*(r.sw?-1:1),look:r.sw&&r.mode!=='air'?.85:0};
+  if(r===p)r.netPose=po;r.sk.pose(po,dt);}
 const fmt=t=>{const m=(t/60)|0,s=t-m*60;return m+':'+(s<10?'0':'')+s.toFixed(2);};
 function hud(dt){
   $('score').textContent=p.score.toLocaleString();$('mult').textContent='x'+p.mult;$('spd').textContent=save.set.units==='mph'?Math.round(Math.hypot(p.vx,p.vz)*.11*.621)+' mph':Math.round(Math.hypot(p.vx,p.vz)*.11)+' km/h';
   $('swb').classList.toggle('on',!!p.sw);
-  const onR=p.mode==='rail';$('bal').classList.toggle('hide',!onR);if(onR){const b=$('bal').lastChild;b.style.left=(50+p.bal*48)+'%';b.style.background=Math.abs(p.bal)>.7?'#ff4d6d':Math.abs(p.bal)>.4?'#ffb03f':'#39d98a';}
+  const onR=false;$('bal').classList.add('hide');if(onR){const b=$('bal').lastChild;b.style.left=(50+p.bal*48)+'%';b.style.background=Math.abs(p.bal)>.7?'#ff4d6d':Math.abs(p.bal)>.4?'#ffb03f':'#39d98a';}
   if(curMode==='time')$('timer').textContent=fmt(p.time);
   feed.forEach(f=>f.t-=dt);feed=feed.filter(f=>f.t>0);
   hudT-=dt;if(hudT<=0){hudT=.2;if(save.set.hints)updateHint();if(map.fr&&curMode!=='skix')resortHud();
     if(curMode==='skix'&&RACE){$('mapName').textContent='🏁 Ski Cross · '+CUR.n+' · '+RACE.T.n;$('board').innerHTML=raceRank().map((r,i)=>'<div class="'+(r===p?'me':'')+'"><span>'+(i+1)+'. '+r.name+'</span><span>'+(r.fin?fmt(r.ft):'')+'</span></div>').join('');}
-    if(curMode==='battle'){$('board').innerHTML=riders.slice().sort((a,b)=>b.score-a.score).map((r,i)=>'<div class="'+(r===p?'me':'')+'"><span>'+(i+1)+'. '+r.name+(r===p&&isStaff()?' <i class=tag>'+save.acct.role.toUpperCase()+'</i>':'')+'</span><span>'+r.score.toLocaleString()+'</span></div>').join('');
+    if(curMode==='battle'){$('board').innerHTML=riders.concat(typeof netBoard==='function'?netBoard():[]).sort((a,b)=>b.score-a.score).map((r,i)=>'<div class="'+(r===p?'me':'')+'"><span>'+(i+1)+'. '+r.name+(r===p&&isStaff()?' <i class=tag>'+save.acct.role.toUpperCase()+'</i>':'')+'</span><span>'+r.score.toLocaleString()+'</span></div>').join('');
       $('feed').innerHTML=feed.map(f=>'<div>'+f.s+'</div>').join('');}}
 }
 const nv=new U.Vector3(),zAx=new U.Vector3(0,0,1),_hp=new U.Vector3();
 const shadow=new U.Mesh(new U.CircleGeometry(13,20),new U.MeshBasicMaterial({color:0x0a1030,transparent:true,opacity:.2,depthWrite:false}));scene.add(shadow);
+/* rope tow (Mega Park): grab it anywhere along the line with E, it pulls you uphill; Space or E lets go, it drops you at the top */
+function nearRope(r){const R=map.rope;return R&&r.mode==='ground'&&r.crashT<=0&&Math.abs(r.x-R.x)<130&&r.z>R.zTop+300&&r.z<R.zBot+300;}
+function ropeToggle(r){const R=map.rope;if(!R)return;if(r.mode==='rope'){ropeRelease(r,false);return;}if(!nearRope(r))return;endButter(r);
+  r.mode='rope';r.vx=r.vz=0;r.head=Math.PI;r.spin=r.ry=r.yo=0;r.sw=false;r.charge=0;if(r===p){sfx('rail',1);say(r,'Rope tow · Space to let go',0,true);}}
+function ropeRelease(r,top){r.mode='ground';r.head=top?0:r.head;r.vz=top?60:-40;r.vx=0;if(top&&r===p)say(r,'Top of Mega Park',0,true);}
+function ropeStep(r,dt){const R=map.rope;if(!R){r.mode='ground';return;}
+  r.x+=(R.x-8-r.x)*Math.min(1,dt*4);r.z-=1500*dt;r.y=hAt(r.x,r.z);r.vx=0;r.vz=-1500;r.head=Math.PI;
+  if(r.inp.jump){r.inp.jump=0;ropeRelease(r,false);return;}if(r.z<=R.zTop+60){r.z=R.zTop+60;ropeRelease(r,true);}}
 function drawRun(dt){
+  if(map&&map.rope&&p&&!p.ropeHint&&nearRope(p)){p.ropeHint=1;say(p,'Press E to grab the rope tow',0,true);}
+  {const RH=runG&&runG.userData.ropeH;if(RH){RH.t+=dt*1500;const span=RH.R.zBot-RH.R.zTop;for(let i=0;i<RH.n*2;i++){const up=i<RH.n;let u=((i%RH.n)*240+(up?-RH.t:RH.t))%span;if(u<0)u+=span;
+    const z=RH.R.zTop+u,x=RH.R.x+(up?0:22);_lq.position.set(x,hAt(x,z)+RH.H-6,z);_lq.rotation.set(0,0,0);_lq.scale.setScalar(1);_lq.updateMatrix();RH.hm.setMatrixAt(i,_lq.matrix);}RH.hm.instanceMatrix.needsUpdate=true;}}
   for(let i=0;i<NP;i++)if(pLife[i]>0){pLife[i]-=dt;const o=i*3;if(pLife[i]<=0){pPos[o+1]=-1e6;continue;}pVel[o+1]-=520*dt;pPos[o]+=pVel[o]*dt;pPos[o+1]+=pVel[o+1]*dt;pPos[o+2]+=pVel[o+2]*dt;}
   pGeo.attributes.position.needsUpdate=true;
   for(const r of riders)place(r,dt);
@@ -319,8 +332,23 @@ function drawRun(dt){
 
 /* ---------- flow ---------- */
 function newStats(){return {corks:0,switchTricks:0,doubles:0,big:0,butterT:0,slides:0,airT:0,grabT:0,finished:0,wins:0};}
-function startRun(id,gm){curMap=id;curMode=gm||curMode;const FR=!!MAPS[id].fr,SX=!!MAPS[id].sx;if(FR)curMode=SX?'skix':'free';if(FR)buildResort(MAPS[id].rid||'blue');else buildMap(id);buildGfx();
-  const multi=curMode==='battle'||SX;riders=multi?[p].concat(BOTS):[p];BOTS.forEach(b=>b.sk.root.visible=multi);RACE=null;
+// map loading screen: shown first, so building the mountain never looks like a freeze
+const LOAD_TIPS=['Hold a grab longer for more points.','Land switch for a bonus.','Repeating the same trick scores less each time: mix it up.','Press Y on a resort to call the snowmobile tow.',
+  'Blue lines mark every lip, knuckle and course edge.','Butter on flat ground to keep your combo alive.','Spins and flips together score big.','Try the halfpipe in Mega Park.'];
+let mapLoading=false;
+function startRun(id,gm){if(mapLoading)return;const M=MAPS[id]||{},el=document.getElementById('mapLoad');if(!el){startRunNow(id,gm);return;}
+  mapLoading=true;el.style.background=(M.sky||'linear-gradient(#1b2a6b,#6a55a8)');
+  el.querySelector('.ml-name').textContent=M.n||'';el.querySelector('.ml-zone').textContent=(M.zone||'')+(M.diff?' · '+M.diff:'');
+  el.querySelector('.ml-desc').textContent=M.d||'';el.querySelector('.ml-tip').textContent='Tip: '+LOAD_TIPS[Math.floor(Math.random()*LOAD_TIPS.length)];
+  const bar=el.querySelector('.ml-bar i');bar.style.transition='none';bar.style.width='8%';el.classList.remove('hide','out');
+  // paint first (two frames), but never wait on frames forever: background tabs pause them
+  const go=f=>{let done=false;const run=()=>{if(!done){done=true;f();}};requestAnimationFrame(()=>requestAnimationFrame(run));setTimeout(run,150);};
+  go(()=>{bar.style.transition='width .5s';bar.style.width='55%';
+    setTimeout(()=>{try{startRunNow(id,gm);}catch(e){console.error('map load failed',e);}bar.style.width='100%';
+      setTimeout(()=>{el.classList.add('out');setTimeout(()=>{el.classList.add('hide');mapLoading=false;},420);},350);},60);});}
+function startRunNow(id,gm){curMap=id;curMode=gm||curMode;const FR=!!MAPS[id].fr,SX=!!MAPS[id].sx;if(FR)curMode=SX?'skix':'free';if(FR)buildResort(MAPS[id].rid||'blue');else buildMap(id);buildGfx();
+  const online=typeof NET!=='undefined'&&NET.rid&&Object.keys(NET.roomPl).length>1;
+  const multi=(curMode==='battle'&&!online)||SX;riders=multi?[p].concat(BOTS):[p];BOTS.forEach(b=>b.sk.root.visible=multi);RACE=null;
   p.stat=statOf(save.load.skis);p.name=save.acct?save.acct.u:(save.set.name||'You');BOTS.forEach(b=>b.bot.sk_=b.bot.sk_||b.bot.skill);BOTS.forEach(b=>b.bot.skill=Math.min(1,b.bot.sk_*[.5,1,1.45][save.set.bots]));spawn(p,0);if(multi)BOTS.forEach(b=>spawn(b,b.bot.lane));audioStart();
   clearDebris();clearTracks();riders.forEach(r=>{if(r!==p&&r.sk.setRide)r.sk.setRide(Math.random()<.3?'board':'ski');r.sk.gear(true);});if(p.sk.setRide)p.sk.setRide(save.set.ride);sk.setPoles(save.set.poles);st=newStats();endShown=false;paused=false;menuKind=null;shake=0;feed=[];pPos.fill(-1e6);pLife.fill(0);camD={x:0,z:1};cam.position.set(0,p.y+80,p.z-160);
   for(const k in keys)keys[k]=0;
@@ -355,7 +383,10 @@ function frame(t){
     if(!paused){const ts=save.set.slowmo&&p.mode==='air'&&p.airT>.35&&curMode!=='skix'?.55:1,sd=dt*ts,n=Math.max(1,Math.ceil(sd*120)),h=sd/n;if(dt>0)for(let i=0;i<n;i++){for(const r of riders){if(r.bot)ai(r);step(r,h);}if(riders.length>1)riderBumps();}stepDebris(sd);
       CLOTH.t.value+=dt;CLOTH.w.value+=((Math.min(1,Math.hypot(p.vx,p.vz)/900)*(p.mode==='air'?1.4:1))-CLOTH.w.value)*Math.min(1,dt*3);
       sfxWind(Math.hypot(p.vx,p.vz),p.mode,Math.abs(p.steer));hud(dt);if(p.fin&&!endShown&&p.mode==='ground'&&Math.hypot(p.vx,p.vz)<8)endRun();}
-    if(paused)sfxWind(0);drawRun(paused?0:dt);}
+    if(paused)sfxWind(0);drawRun(paused?0:dt);if(typeof netSend==='function'){netSend(dt);netDraw(dt);}}
   else{sfxWind(0);if(mode==='queue')tickQueue(dt);drawLobby(dt);}
   requestAnimationFrame(frame);
 }
+
+/* mouse-wheel zoom while riding (also saved as the Zoom setting) */
+window.addEventListener('wheel',e=>{if(mode!=='run'||!save||!save.set)return;save.set.zoom=Math.max(.45,Math.min(2.6,(save.set.zoom||1)*(e.deltaY>0?1.07:1/1.07)));},{passive:true});

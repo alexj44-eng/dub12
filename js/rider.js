@@ -46,7 +46,8 @@ function loadAssets(url,onDone,onErr){
     if(!plain){step('decoding '+(i+1)+'/4 ('+n+')…');LS.set('dub12_decoding',n);b=await dl[n];g=b&&await parseT(b,15000);LS.set('dub12_decoding',null);}
     if(!g){console.warn('using uncompressed backup for',n);step((plain?'loading ':'using backup copy of ')+n+' ('+(i+1)+'/4)…');const rb=await getBuf('assets/raw/'+n+'.glb'+V,2,120000);g=rb&&await parseT(rb,opt?15000:60000);}
     return g;};
-  (async()=>{const out={};for(let i=0;i<NAMES.length;i++){out[NAMES[i]]=await one(NAMES[i],i);if(i===0&&!out.models){onErr&&onErr('models');return;}}
+  (async()=>{const out={};out.models=await one('models',0);if(!out.models){onErr&&onErr('models');return;}   // the rider pack is required: decode it first so a failure shows fast
+    step('loading gear and scenery…');const opt=await Promise.all([one('extra',1),one('gear',2),one('env',3)]);out.extra=opt[0];out.gear=opt[1];out.env=opt[2];
     take(out.models);if(out.env)take(out.env);if(out.gear)prep(out.gear);if(out.extra)prep(out.extra);step('starting game…');onDone();})()
     .catch(err=>{console.error('asset load failed',err);onErr&&onErr(err);});
 }
@@ -67,16 +68,15 @@ let WAF=null;function waffleTex(){if(WAF)return WAF;const c=document.createEleme
   WAF=new U.CanvasTexture(c);WAF.wrapS=WAF.wrapT=U.RepeatWrapping;WAF.repeat.set(10,10);return WAF;}
 // race bib print: left half = front, right half = back. Vest shape with arm openings, number box, series name, made-up sponsor marks
 const BIBT={};
-function bibTex(col){if(BIBT[col])return BIBT[col];const c=document.createElement('canvas');c.width=1024;c.height=512;const g=c.getContext('2d'),hx='#'+col.toString(16).padStart(6,'0');
+function bibTex(col,num){const number=String(num||12).replace(/[^0-9]/g,'').slice(0,3)||'12',key=col+'_'+number;if(BIBT[key])return BIBT[key];const c=document.createElement('canvas');c.width=1024;c.height=512;const g=c.getContext('2d'),hx='#'+col.toString(16).padStart(6,'0');
   const lum=((col>>16&255)*.3+(col>>8&255)*.59+(col&255)*.11)/255,ink=lum>.6?'#111':'#fff';
   for(let h=0;h<2;h++){const ox=h*512;g.save();g.translate(ox,0);
-    g.fillStyle=hx;g.beginPath();g.moveTo(-2,500);g.lineTo(-2,300);g.quadraticCurveTo(110,292,140,110);g.lineTo(206,96);g.quadraticCurveTo(256,190,306,96);g.lineTo(372,110);g.quadraticCurveTo(402,292,514,300);g.lineTo(514,500);g.closePath();g.fill();g.fillStyle='rgba(0,0,0,.25)';g.fillRect(0,492,512,8);g.fillStyle='rgba(0,0,0,.18)';g.fillRect(0,300,6,200);g.fillRect(506,300,6,200);   // vest (512 tall: v=0 bottom.. flipped by canvas)
-    g.fillStyle='#ffffff';g.fillRect(170,250,172,110);g.strokeStyle=ink;g.lineWidth=4;g.strokeRect(170,250,172,110);
-    g.fillStyle='#111';g.font='900 92px Impact,Arial Black,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(h?'12':'12',256,308);
+    g.fillStyle=hx;g.fillRect(132,84,248,420);g.fillRect(0,296,512,208);g.beginPath();g.moveTo(132,200);g.quadraticCurveTo(128,292,0,296);g.lineTo(0,300);g.lineTo(132,300);g.fill();g.beginPath();g.moveTo(380,200);g.quadraticCurveTo(384,292,512,296);g.lineTo(512,300);g.lineTo(380,300);g.fill();g.save();g.globalCompositeOperation='destination-out';g.beginPath();g.ellipse(256,84,46,40,0,0,Math.PI*2);g.fill();g.restore();g.fillStyle='rgba(0,0,0,.25)';g.fillRect(0,496,512,8);g.fillStyle='#ffffff';g.fillRect(170,250,172,110);g.strokeStyle=ink;g.lineWidth=4;g.strokeRect(170,250,172,110);
+    g.fillStyle='#111';g.font='900 92px Impact,Arial Black,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(number,256,308);
     g.fillStyle=ink;g.font='800 26px Inter,Arial,sans-serif';g.fillText('DUB12 PARK SERIES',256,236);
     g.font='italic 900 30px Impact,sans-serif';g.fillText('NORTHLINE',256,400);g.font='800 22px Inter,Arial,sans-serif';g.fillText('SUMMIT CO.  ·  YARDLINE',256,440);
     g.restore();}
-  const t=new U.CanvasTexture(c);t.anisotropy=8;t.flipY=true;return BIBT[col]=t;}
+  const t=new U.CanvasTexture(c);t.anisotropy=8;t.flipY=true;return BIBT[key]=t;}
 const TEET={};
 function teeTex(col,kind){const key=col+kind;if(TEET[key])return TEET[key];const c=document.createElement('canvas');c.width=1024;c.height=512;const g=c.getContext('2d'),hx='#'+col.toString(16).padStart(6,'0');
   g.textAlign='center';g.textBaseline='middle';
@@ -119,14 +119,28 @@ function decoMat(m){const prev=m.onBeforeCompile,u={uDT:{value:null},uDO:{value:
 // a bridge/skyline line drawing and bold red DUB12 lettering. Wraparound map: u = around the head (0.5 = front), v = height.
 let LIVERY=null;
 function liveryTex(){if(LIVERY)return LIVERY;const c=document.createElement('canvas');c.width=1024;c.height=512;const g=c.getContext('2d');
-  const sil=g.createLinearGradient(0,0,0,512);sil.addColorStop(0,'#eef1f5');sil.addColorStop(.6,'#b9c0ca');sil.addColorStop(1,'#8e96a2');g.fillStyle=sil;g.fillRect(0,0,1024,512);
-  const blu=g.createLinearGradient(0,0,0,512);blu.addColorStop(0,'#3a7bff');blu.addColorStop(.45,'#0f3fc8');blu.addColorStop(1,'#061c6e');
-  g.save();g.translate(512,256);g.rotate(-.5);g.fillStyle=blu;for(let i=-6;i<6;i++)for(let j=-4;j<4;j++)if((i+j)%2===0)g.fillRect(i*150,j*150,150,150);g.restore();   // diagonal checker panels
-  g.strokeStyle='rgba(20,30,60,.55)';g.lineWidth=3;for(const cx of [300,770]){g.beginPath();g.arc(cx,300,150,Math.PI,0);g.stroke();for(let k=-6;k<=6;k++){g.beginPath();g.moveTo(cx+k*24,300-Math.sqrt(Math.max(0,150*150-(k*24)**2)));g.lineTo(cx+k*24,330);g.stroke();}
-    g.beginPath();g.moveTo(cx-200,330);g.lineTo(cx+200,330);g.stroke();}                                                                                                  // bridge line art
-  for(const cx of [256,768]){const yg=g.createRadialGradient(cx-30,250,10,cx,270,95);yg.addColorStop(0,'#fff27a');yg.addColorStop(1,'#f2c200');g.fillStyle=yg;g.beginPath();g.arc(cx,270,92,0,7);g.fill();}   // yellow side discs
-  g.font='italic 900 110px Impact,Arial Black,sans-serif';g.textAlign='center';g.textBaseline='middle';g.lineJoin='round';
-  g.save();g.translate(512,404);g.scale(1,-1);drawEmblem(g,0,0,.62);g.restore();for(const cx of [0,1024]){g.lineWidth=18;g.strokeStyle='#ffffff';g.strokeText('DUB12',cx,112);g.fillStyle='#e3262f';g.fillText('DUB12',cx,112);}                   // front + back lettering
+  // map layout (park shell): u wraps the head (x 512 = front, 256/768 = sides, 0/1024 = back); the crown is at the canvas bottom,
+  // the front brim is around y 280 — so lettering is drawn flipped vertically to read upright on the helmet.
+  const silver=g.createLinearGradient(0,200,0,512);silver.addColorStop(0,'#aeb4bc');silver.addColorStop(.45,'#e9ecf0');silver.addColorStop(1,'#c9ced5');
+  const blue=g.createLinearGradient(0,200,0,512);blue.addColorStop(0,'#14287a');blue.addColorStop(.5,'#2443b8');blue.addColorStop(1,'#1a338f');
+  // quartered shell: alternating silver / royal-blue panels split down the middle front-to-back and side-to-side
+  [[0,silver],[256,blue],[512,silver],[768,blue]].forEach(([x,f])=>{g.fillStyle=f;g.fillRect(x,0,256,512);});
+  g.fillStyle='rgba(0,0,0,.22)';[256,512,768].forEach(x=>g.fillRect(x-1.5,0,3,512));            // panel seams
+  const up=(cx,cy,fn)=>{g.save();g.translate(cx,cy);g.scale(1,-1);fn();g.restore();};
+  // side graphics: a big yellow sun rising from the brim with two red original lightning bolts charging forward
+  [[256,1],[768,-1]].forEach(([cx,dir])=>{const yg=g.createRadialGradient(cx,240,10,cx,240,150);yg.addColorStop(0,'#ffe066');yg.addColorStop(1,'#f2b705');
+    g.fillStyle=yg;g.beginPath();g.arc(cx,232,138,0,Math.PI*2);g.fill();
+    up(cx,300,()=>{g.scale(dir*1.35,1.35);g.fillStyle='#e01f2d';g.strokeStyle='#ffffff';g.lineWidth=4;g.lineJoin='round';
+      [[0,0],[-26,-34]].forEach(([ox,oy])=>{g.beginPath();g.moveTo(-70+ox,-10+oy);g.lineTo(-6+ox,-26+oy);g.lineTo(-16+ox,-6+oy);g.lineTo(52+ox,-18+oy);g.lineTo(-4+ox,26+oy);g.lineTo(6+ox,4+oy);g.lineTo(-58+ox,16+oy);g.closePath();g.stroke();g.fill();});});
+    up(cx,388,()=>{g.font='italic 900 60px Impact,Arial Black,sans-serif';g.textAlign='center';g.textBaseline='middle';g.lineWidth=10;g.strokeStyle='#fff';g.strokeText('DUB12',0,0);g.fillStyle='#e01f2d';g.fillText('DUB12',0,0);});});
+  // front: sun badge with crossed bolts above big red DUB12 lettering (white outline)
+  up(512,322,()=>{g.font='italic 900 96px Impact,Arial Black,sans-serif';g.textAlign='center';g.textBaseline='middle';g.lineJoin='round';g.lineWidth=16;g.strokeStyle='#ffffff';g.strokeText('DUB12',0,0);g.fillStyle='#e01f2d';g.fillText('DUB12',0,0);});
+  up(512,410,()=>{drawEmblem(g,0,0,.55);});
+  // back: lettering again, smaller
+  [0,1024].forEach(cx=>up(cx,330,()=>{g.font='italic 900 72px Impact,Arial Black,sans-serif';g.textAlign='center';g.textBaseline='middle';g.lineWidth=12;g.strokeStyle='#fff';g.strokeText('DUB12',0,0);g.fillStyle='#e01f2d';g.fillText('DUB12',0,0);}));
+  // vents: dark rounded slots on the crown, front and sides
+  g.fillStyle='#22252b';const vent=(x,y,w,h)=>{g.beginPath();g.roundRect?g.roundRect(x-w/2,y-h/2,w,h,8):g.rect(x-w/2,y-h/2,w,h);g.fill();};
+  [[440,470],[584,470],[380,440],[644,440],[512,500],[196,420],[316,420],[708,420],[828,420],[60,450],[964,450]].forEach(([x,y])=>vent(x,y,44,26));
   LIVERY=new U.CanvasTexture(c);LIVERY.anisotropy=8;LIVERY.wrapS=U.RepeatWrapping;return LIVERY;}
 
 /* ---------- textures ---------- */
@@ -199,7 +213,12 @@ const GRABPOSE={
  Critical:{c:.9,lean:.95,sy:-.3,hl:[-3,-15,12],hr:[-16,10,-2]},
  Blunt:{c:.8,lean:.55,lX:-.7,tw:-.3,hl:[15,10,2],hr:[-5,-13,-16]},
  'Truck Driver':{c:1,lean:1.05,lX:-.35,tk:3,hl:[7,-13,13],hr:[-7,-13,13]},
- Octograb:{c:.95,lean:.9,sy:.7,lX:.3,hl:[-4,-14,8],hr:[4,-14,8]}
+ Octograb:{c:.95,lean:.9,sy:.7,lX:.3,hl:[-4,-14,8],hr:[4,-14,8]},
+ Stalefish:{c:.9,lean:.85,lX:-.4,hl:[14,10,-2],hr:[-8,-14,-10]},
+ Nose:{c:.75,lean:1.15,lX:.5,hl:[16,10,2],hr:[-3,-11,16]},
+ Seatbelt:{c:.9,lean:.9,lX:-.2,tw:.35,hl:[-6,-13,-12],hr:[-16,10,0]},
+ 'Double Tail':{c:.85,lean:.6,lX:-.55,hl:[6,-14,-13],hr:[-6,-14,-13]},
+ Rocket:{c:.5,lean:1.2,lX:.9,hl:[4,-10,17],hr:[-4,-10,17]}
 };
 /* ---------- clothing fit ----------
    The original jacket hem tapered inward (6.8 wide) right where the pants hips are widest (7.4-7.8),
@@ -240,17 +259,22 @@ function makeRider(){
   const std=(c,o)=>new U.MeshStandardMaterial(Object.assign({color:c,roughness:.85,vertexColors:true},o||{}));
   // physically based upgrades: lacquered helmet shells and ski tops, soft sheen on fabric
   const phys=(c,o)=>new U.MeshPhysicalMaterial(Object.assign({color:c,roughness:.85,vertexColors:true},o||{}));
-  const fab=(c,o)=>phys(c,Object.assign({sheen:new U.Color(0x6a6a6a),roughness:.82},o||{}));
+  const fab=(c,o)=>phys(c,Object.assign({sheen:new U.Color(0x9aa5b8),roughness:.78,envMapIntensity:.42},o||{}));
   const M={skin:std(0xe0aa84,{roughness:.62,envMapIntensity:.3}),lip:std(0xb06a5a,{roughness:.42}),mask:std(0x16161a,{roughness:.95,bumpMap:fabricTex(),bumpScale:.4}),eye_white:std(0xf4f0ea,{roughness:.25}),iris:std(0x5a3a22,{roughness:.2}),pupil:std(0x080808,{roughness:.1}),
-    hair:std(0x3b2416,{roughness:.75}),helmet:phys(0x222222,{roughness:.32,clearcoat:1,clearcoatRoughness:.06,envMapIntensity:1,side:U.DoubleSide}),helmet_acc:std(0xffffff,{roughness:.3,side:U.DoubleSide}),helmet_dark:std(0x15161a,{roughness:.8,side:U.DoubleSide,bumpMap:fabricTex(),bumpScale:.25}),
-    strap:std(0x111111,{roughness:.9,side:U.DoubleSide}),hstrap:std(0x15161a,{roughness:.85,side:U.DoubleSide}),frame:std(0x111111,{roughness:.45}),lens:std(0xff7a1a,{roughness:.04,metalness:1,envMapIntensity:1.6}),
+    hair:std(0x3b2416,{roughness:.68,envMapIntensity:.16}),helmet:phys(0x222222,{roughness:.28,clearcoat:1,clearcoatRoughness:.045,envMapIntensity:1.25,side:U.DoubleSide}),helmet_acc:std(0xffffff,{roughness:.3,side:U.DoubleSide}),helmet_dark:std(0x15161a,{roughness:.8,side:U.DoubleSide,bumpMap:fabricTex(),bumpScale:.25}),
+    strap:std(0x111111,{roughness:.9,side:U.DoubleSide}),hstrap:std(0x15161a,{roughness:.85,side:U.DoubleSide}),frame:std(0x111111,{roughness:.45}),lens:phys(0xff7a1a,{roughness:.055,metalness:.72,clearcoat:1,clearcoatRoughness:.04,envMapIntensity:1.85}),
     jacket:cloth(fab(0xff4d3d,{bumpMap:fabricTex(),bumpScale:.35}),1),stripe:cloth(fab(0x3a3d44,{bumpMap:fabricTex(),bumpScale:.35}),1),
     zip:std(0x0c0c0e,{roughness:.4,metalness:.3}),logo:std(0xf2f2f2,{roughness:.5}),
     jacket_arm:band(cloth(fab(0xff4d3d,{bumpMap:fabricTex(),bumpScale:.35}),1),.03,.41,'arm'),jacket_sh:band(fab(0xff4d3d,{bumpMap:fabricTex(),bumpScale:.35}),-9,-.85,'sh'),hood:cloth(fab(0xff4d3d,{side:U.DoubleSide,bumpMap:fabricTex(),bumpScale:.35}),1.3),accent:std(0xffd23f),trim:std(0x1c1f2b),gaiter:std(0x22252e,{roughness:.95}),pants:cloth(fab(0x1b2247,{roughness:.9,bumpMap:fabricTex(),bumpScale:.35}),.8),
     glove:std(0x17181d,{roughness:.7}),glove_acc:std(0x2c2e36,{roughness:.8}),boot_shell:phys(0x24262e,{roughness:.3,clearcoat:.6,clearcoatRoughness:.15,envMapIntensity:.6}),boot_cuff:std(0x3a3d48,{roughness:.35}),
-    metal:std(0xcfd6e4,{metalness:.85,roughness:.25}),pole:std(0xcfd6e4,{metalness:.7,roughness:.28}),sole:std(0x15161a,{roughness:.8}),ski_top:phys(0xffffff,{roughness:.35,clearcoat:.8,clearcoatRoughness:.12,envMapIntensity:.5}),
+    metal:std(0xcfd6e4,{metalness:.85,roughness:.25}),pole:std(0xcfd6e4,{metalness:.7,roughness:.28}),sole:std(0x15161a,{roughness:.8}),ski_top:phys(0xffffff,{roughness:.3,clearcoat:.9,clearcoatRoughness:.08,envMapIntensity:.72}),
     ski_base:std(0x111111,{roughness:.4}),ski_edge:std(0x1a1a1e,{roughness:.4,metalness:.4}),bind:std(0x1b1d24,{roughness:.35}),grip:std(0x15161a,{roughness:.7})};
   quiltMat(M.jacket,8);quiltMat(M.jacket_arm,6.5);quiltMat(M.jacket_sh,6.5);quiltMat(M.hood,6);decoMat(M.pants);   // puffer baffles, smooth geometry
+  // ski flex: skis bow on rails and flex nose/tail on butters and presses (vertex shader, no geometry changes)
+  {let L=40;if(A.ski){const b=new U.Box3().setFromObject(A.ski);L=Math.max(10,(b.max.z-b.min.z)/2);}const FL={uS:{value:0},uA:{value:0}};M.skiFlex=FL;
+    [M.ski_top,M.ski_base,M.ski_edge].forEach(m=>{const prev=m.onBeforeCompile;m.onBeforeCompile=sh=>{if(prev)prev(sh);sh.uniforms.uFlexS=FL.uS;sh.uniforms.uFlexA=FL.uA;
+      sh.vertexShader='uniform float uFlexS,uFlexA;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n{float u=clamp(transformed.z/'+L.toFixed(1)+',-1.0,1.0);transformed.y+=uFlexS*u*u*-4.0+uFlexA*u*abs(u)*-5.0;}');};
+      const pk=m.customProgramCacheKey?m.customProgramCacheKey():'';m.customProgramCacheKey=()=>pk+'flex';});}
   const remap={};
   function dress(o,over){o.traverse(c=>{if(!c.isMesh)return;const n=mname(c.material);c.material=M[(over&&over[n])||n]||M.trim;});return o;}
   const root=new U.Group(),flipG=new U.Group(),body=new U.Group();root.add(flipG);flipG.add(body);flipG.position.y=22;body.position.y=-22;
@@ -286,7 +310,7 @@ function makeRider(){
       [[-1.2,5.6,2.6],[3.4,3.4,2.0]].forEach(([dz,y,w])=>{const st=new U.Mesh(whiteCols(new U.BoxGeometry(6.9,1.1,w)),M.bind);st.position.set(0,y,dz);bg.add(st);});});
     boardG.traverse(o=>{if(o.isMesh){o.castShadow=true;}});}
   const segAttr=(o,v)=>o.traverse(c=>{if(c.isMesh){c.geometry=c.geometry.clone();const n=c.geometry.attributes.position.count;c.geometry.setAttribute('aSeg',new U.BufferAttribute(new Float32Array(n).fill(v),1));}});thigh.forEach((o,i)=>segAttr(o,1+2*i));shin.forEach((o,i)=>segAttr(o,2+2*i));
-  shin.forEach(o=>o.traverse(c=>{if(!c.isMesh)return;c.userData.g0=c.geometry;const t=c.geometry.clone(),P=t.attributes.position;for(let i=0;i<P.count;i++){const y=P.getY(i),f=1+.42*ss(.15,-.5,y);P.setXYZ(i,P.getX(i)*f,y,P.getZ(i)*f);}P.needsUpdate=true;t.computeVertexNormals();c.userData.gFl=t;}));
+  shin.forEach(o=>o.traverse(c=>{if(!c.isMesh)return;c.userData.g0=c.geometry;const t=c.geometry.clone(),P=t.attributes.position;for(let i=0;i<P.count;i++){const y=P.getY(i),f=1+.26*ss(.05,-.5,y);P.setXYZ(i,P.getX(i)*f,y,P.getZ(i)*f*.92);}P.needsUpdate=true;t.computeVertexNormals();c.userData.gFl=t;}));
   let ride='ski';
   const upper=new U.Group();body.add(upper);
   const torsoG=new U.Group();upper.add(torsoG);
@@ -296,7 +320,7 @@ function makeRider(){
   if(GEAR){add(dress(part('gj_torso')),torsoG);add(dress(part('gj_zip')),torsoG);hoodDown=add(dress(part('gj_hood_down')),torsoG);hoodDown.userData.gear=1;gHips=add(dress(part('gp_hips')),upper);}
   else if(V2){add(dress(part('torso_v2')),torsoG);hoodDown=add(dress(part('hood_down_v2')),torsoG);}
   else{add(dress(part('torso')),torsoG);hoodDown=add(dress(part('hood_down')),torsoG);add(dress(part('gaiter')),upper);}
-  if(!GEAR)add(dress(part('hips')),torsoG);
+  if(!GEAR){const hp_=add(dress(part('hips')),torsoG);hp_.scale.set(.8,.55,.62);hp_.position.y=2.2;}   // slim waist block: tucks inside the jacket and thighs (no boxy rectangle at the back)
   const SH=[new U.Vector3(8.35,13.3,0),new U.Vector3(-8.35,13.3,0)];
   [0,1].forEach(i=>{const gs=i?'N':'P';shoulder.push(add(jsph(2.8,V2?M.jacket_sh:M.jacket),upper));uarm.push(add(dress(part(GEAR?'gj_uarm_'+gs:'uarm'),V2&&!GEAR?{jacket:'jacket_arm'}:null),upper));farm.push(add(dress(part(GEAR?'gj_farm_'+gs:'farm')),upper));elb.push(add(jsph(2.4,M.jacket),upper));
     if(GEAR){shoulder[i].material=M.jacket;elb[i].material=M.jacket;}   // padded caps hide the shoulder/elbow seams in every pose
@@ -316,7 +340,7 @@ function makeRider(){
       buds.add(tube([[sd*4.6,-.6,.5],[sd*4.3,-3.5,1.2],[sd*2.6,-7.2,2.4],[sd*.5,-9.4,3.2]],.13));});}
   const budWire=new U.Mesh(whiteCols(new U.TubeGeometry(new U.CatmullRomCurve3([[0,14.6,3.6],[.6,12.5,6.1],[1.8,9,6.9],[2.6,5.5,7.0]].map(p=>new U.Vector3(...p))),20,.13,5,false)),M.bud);upper.add(budWire);const tops={};['crop','flow','pony','braids','curls','buzz'].forEach(t=>{tops[t]=add(dress(part('top_'+t)),head);});
   // hood rides on the torso (not the head) so it stays joined to the jacket when the head turns
-  const HV2=V2&&!!A.hood_up_v2,hoodUp=add(dress(part(GEAR?'gj_hood_up':HV2?'hood_up_v2':'hood_up'),{hood:'jacket'}),upper);if(!HV2&&!GEAR){hoodUp.position.copy(head.position);if(V2)hoodUp.scale.setScalar(.84);}if(HV2){hoodUp.scale.set(1.16,1.12,1.14);hoodUp.position.y-=1.4;}   // roomier hood that fits over the helmet
+  const HV2=V2&&!!A.hood_up_v2,hoodUp=add(dress(part(GEAR?'gj_hood_up':HV2?'hood_up_v2':'hood_up'),{hood:'jacket'}),upper);if(!HV2&&!GEAR){hoodUp.position.copy(head.position);if(V2)hoodUp.scale.setScalar(.84);}if(HV2){hoodUp.scale.set(1.16,1.12,1.14);hoodUp.position.y-=1.4;hoodUp.userData.y0=hoodUp.position.y;}   // roomier hood that fits over the helmet
   if(GEAR){head.position.set(0,GM.head_y,GM.head_z);head.scale.setScalar(GM.head_s);M.jacket.side=M.pants.side=U.DoubleSide;}   // cut seams never show through   // realistic head size/height to match the fitted jacket
   const hairs={};['crop','flow','pony','braids','curls','buzz'].forEach(s=>{if(A['hair_'+s])hairs[s]=add(dress(part('hair_'+s)),head);});
   const helmets={};['shell','pro','bucket','beanie'].forEach(s=>{helmets[s]=add(dress(part('helmet_'+s),{strap:'hstrap'}),head);});
@@ -333,10 +357,16 @@ function makeRider(){
   // race bib: a vest drawn over the torso (shirt shows at the sides/arms). Planar UVs: left half of the texture = front, right half = back
   let bibMesh=null;
   {let big=null;torsoG.children[0].traverse(c=>{if(c.isMesh&&(!big||c.geometry.attributes.position.count>big.geometry.attributes.position.count))big=c;});
-    if(big){const g=big.geometry.clone();g.computeBoundingBox();const bb=g.boundingBox,P=g.attributes.position,uv=new Float32Array(P.count*2);
+    if(big){let g=big.geometry.clone();
+      // the jacket body has an open band where its chest stripe sits (the stripe is a separate piece): merge it in so the vest has no hole
+      {let st=null;torsoG.children[0].traverse(c=>{if(c.isMesh&&c!==big&&c.material===M.stripe)st=c;});
+        if(st){const parts=[g.index?g.toNonIndexed():g,st.geometry.index?st.geometry.toNonIndexed():st.geometry.clone()],Pp=[],Nn=[];
+          parts.forEach(q=>{q.computeVertexNormals();const a1=q.attributes.position,a2=q.attributes.normal;for(let i=0;i<a1.count;i++){Pp.push(a1.getX(i),a1.getY(i),a1.getZ(i));Nn.push(a2.getX(i),a2.getY(i),a2.getZ(i));}});
+          g=new U.BufferGeometry();g.setAttribute('position',new U.Float32BufferAttribute(Pp,3));g.setAttribute('normal',new U.Float32BufferAttribute(Nn,3));}}
+      g.computeBoundingBox();const _bb0=g.boundingBox.clone();const bb=g.boundingBox,P=g.attributes.position,uv=new Float32Array(P.count*2);
       for(let i=0;i<P.count;i++){const x=(P.getX(i)-bb.min.x)/(bb.max.x-bb.min.x),y=(P.getY(i)-bb.min.y)/(bb.max.y-bb.min.y),z=P.getZ(i);uv[i*2]=z>=0?x*.5:1-x*.5;uv[i*2+1]=y;}
-      g.setAttribute('uv',new U.BufferAttribute(uv,2));M.bib=new U.MeshStandardMaterial({color:0xffffff,roughness:.75,transparent:false,alphaTest:.5,side:U.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2});
-      bibMesh=new U.Mesh(g,M.bib);bibMesh.position.copy(big.position);bibMesh.quaternion.copy(big.quaternion);bibMesh.scale.copy(big.scale).multiplyScalar(1.04);bibMesh.castShadow=true;bibMesh.visible=false;big.parent.add(bibMesh);}}
+      g.setAttribute('uv',new U.BufferAttribute(uv,2));const gFull=g.clone();{const PP=g.attributes.position;for(let i=0;i<PP.count;i++){const y=PP.getY(i);if(y>14.6){const k=ss(14.6,20.5,y);PP.setXYZ(i,PP.getX(i)*(1-.32*k),14.6+(y-14.6)*.3,PP.getZ(i)*(1-.32*k));}}PP.needsUpdate=true;g.computeVertexNormals();}M.bib=new U.MeshStandardMaterial({color:0xffffff,roughness:.75,transparent:false,alphaTest:.5,side:U.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2});
+      bibMesh=new U.Mesh(g,M.bib);bibMesh.userData.gLow=g;bibMesh.userData.gFull=gFull;bibMesh.position.copy(big.position);bibMesh.quaternion.copy(big.quaternion);bibMesh.scale.copy(big.scale).multiplyScalar(1.04);bibMesh.castShadow=true;bibMesh.visible=false;big.parent.add(bibMesh);}}
   const gpiv=new U.Group();gpiv.position.set(0,.9,0);head.add(gpiv);const gogs={};
   ['frame','rimless'].forEach(s=>{const g=new U.Group();g.position.y=-.9;['frame','lens','strap'].forEach(p=>g.add(dress(part('gog_'+s+'_'+p))));gpiv.add(g);gogs[s]=g;});
   // park goggles (round style): thick rounded frame with a nose notch, wide cylindrical lens, bent round the face
@@ -365,7 +395,7 @@ function makeRider(){
   // tees/hoodies/base layer get a low crew neck instead of the puffer's tall funnel collar
   shirtables.forEach(c=>{if(c.userData.fa||c.userData.m0!==M.jacket)return;const g=c.geometry;g.computeBoundingBox();if(g.boundingBox.max.y<18)return;c.userData.g0=g;const t=g.clone(),P=t.attributes.position;
     for(let i=0;i<P.count;i++){const y=P.getY(i);if(y>14.6){const k=ss(14.6,20.5,y);P.setXYZ(i,P.getX(i)*(1-.32*k),14.6+(y-14.6)*.3,P.getZ(i)*(1-.32*k));}}P.needsUpdate=true;t.computeVertexNormals();c.userData.gTop=t;});
-  let shirtMode='puffer';function swapShirt(mode){if(mode===shirtMode)return;shirtMode=mode;shirtables.forEach(c=>{const arm=c.userData.m0===M.jacket_arm;if(c.userData.gTop)c.geometry=mode==='puffer'?c.userData.g0:c.userData.gTop;
+  let shirtMode='puffer';function swapShirt(mode){if(mode===shirtMode)return;shirtMode=mode;shirtables.forEach(c=>{const arm=c.userData.m0===M.jacket_arm;if(c.userData.gTop)c.geometry=(mode==='puffer'||R.hoodOn)?c.userData.g0:c.userData.gTop;
     c.material=mode==='puffer'?c.userData.m0:mode==='tee'&&c.userData.fa?M.skin:mode==='waffle'?(arm?M.shirt_arm:M.shirt):(arm?M.cotton_arm:M.cotton);});}
   const s={c:0,lean:.1,tw:0,lX:0,tk:0,sy:0,ss:0,hl:new U.Vector3(9.5,-3,3),hr:new U.Vector3(-9.5,-3,3),pd:new U.Vector3(.12,-.95,-.25),gu:0,look:0};
   const tA=new U.Vector3(),tB=new U.Vector3(),tE=new U.Vector3(),tH=new U.Vector3();
@@ -390,8 +420,8 @@ function makeRider(){
       // race bib: waffle-knit base layer (jacket colour) + vest in the second colour
       const topMode=J.bib?'waffle':J.top==='tee'?'tee':J.top?'cotton':'puffer';swapShirt(topMode);
       M.shirt.color.setHex(jc);M.shirt_arm.color.setHex(jc);M.cotton.color.setHex(jc);M.cotton_arm.color.setHex(jc);
-      if(topMode!=='puffer'){M.stripe.color.setHex(jc);}torsoG.traverse(c=>{if(c.isMesh&&(c.material===M.zip||c.material===M.logo))c.visible=topMode==='puffer'||(J.top==='hoodie'&&c.material===M.zip&&false);});   // tees/hoodies/base layer: no chest stripe, zip or patch
-      if(bibMesh){bibMesh.visible=!!(J.bib||J.top);if(bibMesh.visible){M.bib.map=J.bib?bibTex(sc):teeTex(sc,J.top);M.bib.needsUpdate=true;}}
+      if(topMode!=='puffer'){M.stripe.color.setHex(jc);}torsoG.traverse(c=>{if(c.isMesh&&(c.material===M.zip||c.material===M.logo))c.visible=topMode==='puffer';});   // tees/hoodies/base layer: no chest stripe, zip or patch
+      if(bibMesh){bibMesh.visible=!!(J.bib||J.top);if(bibMesh.visible){M.bib.map=J.bib?bibTex(sc,bd&&bd.bibNumber):teeTex(sc,J.top);M.bib.needsUpdate=true;}}
       M.accent.color.setHex(jc);M.trim.color.setHex(jc);
       {const pc=POLECOL[(bd&&bd.pc)||0]||POLECOL[0];M.pole.color.setHex(pc[1]);M.pole.metalness=pc[2]?.75:.15;M.pole.roughness=pc[2]?.25:.38;}   // pole colour
       M.pants.color.setHex(P.pat?0xffffff:P.c);M.pants.map=P.pat?patTex(P.pat,P.c,P.p2):null;M.pants.needsUpdate=true;
@@ -407,7 +437,8 @@ function makeRider(){
       if(M.helmet_liv){const L_=M.helmet_liv;if(He.liv){L_.map=liveryTex();L_.color.setHex(0xffffff);L_.metalness=.22;L_.roughness=.22;L_.clearcoat=1;L_.clearcoatRoughness=.05;}
         else{L_.map=He.style==='park2'?emblemTex(He.c):null;L_.color.setHex(He.style==='park2'?0xffffff:He.c);L_.metalness=0;L_.roughness=.58;L_.clearcoat=.3;}L_.needsUpdate=true;}
       for(const k in helmets){helmets[k].visible=k===He.style;helmets[k].scale.setScalar(zsc('zh'));}helmetStyle=He.style;gogBase=(He.style==='none'?.84:He.style==='beanie'?.93:1)*zsc('zg');
-      skiOnly.forEach(o=>{o.scale.z=zsc('zs');o.scale.x=.72*zsc('zw');o.scale.y=.6+.8*((bd&&bd.zt!==undefined)?bd.zt:.5);});   // slimmer, realistic ski widthboardG.scale.x=zsc('zs');poleK=zsc('zp');pole.forEach(o=>o.scale.y=poleK);gloveK=zsc('zgl');
+      skiOnly.forEach(o=>{o.scale.z=zsc('zs');o.scale.x=.72*zsc('zw');o.scale.y=.6+.8*((bd&&bd.zt!==undefined)?bd.zt:.5);});   // slimmer, realistic ski width
+      boardG.scale.x=zsc('zs');poleK=zsc('zp');pole.forEach(o=>o.scale.y=poleK);gloveK=zsc('zgl');
       const Ma=IDX[load.mask||'m_none'];R.mask=Ma.style;for(const k in masks)masks[k].visible=k===Ma.style;M.mask.color.setHex(Ma.pat?0xffffff:Ma.c);M.mask.map=Ma.pat?patTex(Ma.pat,Ma.c,Ma.p2):null;M.mask.needsUpdate=true;
       const gOff=R.gogMode==='off';for(const k in gogs)gogs[k].visible=k===Go.style&&!gOff;R.noGog=Go.style==='none'||gOff;M.frame.color.setHex(Go.f);M.lens.side=Go.style==='round'?U.DoubleSide:M.lens.side;M.lens.color.setHex(Go.l);if(Go.clear){M.lens.transparent=true;M.lens.opacity=.32;M.lens.metalness=.05;M.lens.roughness=.02;M.lens.depthWrite=false;}else{M.lens.transparent=false;M.lens.opacity=1;M.lens.metalness=1;M.lens.roughness=.04;M.lens.depthWrite=true;}M.lens.needsUpdate=true;if(M.lensR){['color'].forEach(k=>M.lensR[k].copy(M.lens[k]));M.lensR.transparent=M.lens.transparent;M.lensR.opacity=M.lens.opacity;M.lensR.metalness=M.lens.metalness;M.lensR.roughness=M.lens.roughness;M.lensR.depthWrite=M.lens.depthWrite;M.lensR.needsUpdate=true;}M.strap.color.setHex(Go.s);
       {const on=!!(bd&&bd.buds);buds.visible=budWire.visible=on;M.bud.color.setHex(bd&&bd.budc?0x17181c:0xf2f2f2);}
@@ -417,7 +448,7 @@ function makeRider(){
       const base=sk.startsWith('custom')?0x1a1a1e:IDX[sk].base;M.bind.color.setHex(base);M.ski_base.color.setHex(shade(base,-.5));
       {const cw=(bd&&bd.cw)||{},C=k=>cw[k]?parseInt(cw[k].slice(1),16):null;let v;
         if((v=C('jacket'))!==null){[M.jacket,M.hood,M.accent,M.trim,M.shirt,M.shirt_arm,M.cotton,M.cotton_arm].forEach(m=>m&&m.color.setHex(v));if(!J.two){M.jacket_arm.color.setHex(v);M.jacket_sh.color.setHex(v);}if(J.bib||J.top)M.stripe.color.setHex(v);}
-        if((v=C('stripe'))!==null){M.stripe.color.setHex(v);M.jacket_arm.userData.stripeU.value.setHex(v);M.jacket_sh.userData.stripeU.value.setHex(v);if(J.two){M.jacket_arm.color.setHex(v);M.jacket_sh.color.setHex(v);}if((J.bib||J.top)&&bibMesh){M.bib.map=J.bib?bibTex(v):teeTex(v,J.top);M.bib.needsUpdate=true;}}
+        if((v=C('stripe'))!==null){M.stripe.color.setHex(v);M.jacket_arm.userData.stripeU.value.setHex(v);M.jacket_sh.userData.stripeU.value.setHex(v);if(J.two){M.jacket_arm.color.setHex(v);M.jacket_sh.color.setHex(v);}if((J.bib||J.top)&&bibMesh){M.bib.map=J.bib?bibTex(v,bd&&bd.bibNumber):teeTex(v,J.top);M.bib.needsUpdate=true;}}
         if((v=C('pants'))!==null){M.pants.color.setHex(v);M.pants.map=null;M.pants.needsUpdate=true;if(P.deco)M.pants.userData.deco.uDT.value=pantsDecoTex(P.deco,v);}
         if((v=C('glove'))!==null)M.glove.color.setHex(v);
         if((v=C('helmet'))!==null){M.helmet.color.setHex(v);if(M.helmet_liv&&!He.liv){M.helmet_liv.map=He.style==='park2'?emblemTex(v):null;M.helmet_liv.needsUpdate=true;}}
@@ -427,7 +458,7 @@ function makeRider(){
         if((v=C('skibase'))!==null){M.bind.color.setHex(v);M.ski_base.color.setHex(shade(v,-.4));}}
       if(bd){M.skin.color.setHex(BODY.skin[bd.skin]);M.lip.color.setHex(BODY.skin[bd.skin]).lerp(new U.Color(0xa4504a),.42).multiplyScalar(.88);
         const hc=BODY.hairColor[bd.hairColor];M.hair.color.setHex(hc);M.iris.color.setHex(BODY.eye[bd.eye]);
-        const clava=R.mask==='clava';for(const k in hairs)hairs[k].visible=k===bd.hair&&!clava&&!bd.hood;for(const k in tops)tops[k].visible=k===bd.hair&&helmetStyle==='none'&&!clava&&!bd.hood;ears.visible=!clava;R.hoodOn=!!bd.hood;hoodUp.visible=R.hoodOn;hoodDown.visible=!R.hoodOn;M.hstrap.visible=!R.hoodOn;
+        const clava=R.mask==='clava';for(const k in hairs)hairs[k].visible=k===bd.hair&&!clava&&!bd.hood;for(const k in tops)tops[k].visible=k===bd.hair&&helmetStyle==='none'&&!clava&&!bd.hood;ears.visible=!clava;R.hoodOn=!!bd.hood;hoodUp.visible=R.hoodOn;shirtables.forEach(c=>{if(c.userData.gTop)c.geometry=(shirtMode==='puffer'||R.hoodOn)?c.userData.g0:c.userData.gTop;});if(bibMesh)bibMesh.geometry=R.hoodOn?bibMesh.userData.gFull:bibMesh.userData.gLow;/* vest follows the shirt's neckline: no gap under a raised hood */hoodDown.visible=!R.hoodOn&&!J.bib;if(HV2){const vy=J.bib?1.0:1.12;hoodUp.scale.set(J.bib?1.08:1.16,vy,J.bib?1.06:1.14);hoodUp.position.y=hoodUp.userData.y0+(J.bib?1.2:0);}M.hstrap.visible=!R.hoodOn;
         // one body type for everyone (realistic proportions)
         // slim, tall athletic build (matches the reference): narrow torso, thin limbs, long legs
         bs=1;R.hs=1;const T=V2?{tx:.84,ty:1,tz:.86,sh:6.75,arm:.84,leg:3.45,th:.76,sn:.72,kn:.64}:{tx:1,ty:1,tz:1,sh:8.35,arm:1,leg:3.9,th:1,sn:1,kn:1};
@@ -442,12 +473,13 @@ function makeRider(){
         if(J.bib||J.top){const k=J.top==='hoodie'?.93:J.bib?.9:.86;T.tx*=k;T.tz*=k-.02;T.arm*=J.top==='hoodie'?.9:.8;}   // fitted base layer under the vest
         torsoG.scale.set(T.tx,T.ty,T.tz);const shY=GEAR?GM.sh_y+.6:13.3*T.ty,shZ=GEAR?GM.sh_z:0;SH[0].set(T.sh*(T.tx/.76),shY,shZ);SH[1].set(-T.sh*(T.tx/.76),shY,shZ);legX=T.leg;
         if(V2&&!GEAR){head.position.y=22.2*T.ty;}
-        [...uarm,...farm].forEach(m=>{m.scale.x=m.scale.z=T.arm;});elb.forEach(m=>m.scale.setScalar(GEAR?T.arm*.62:T.arm));shoulder.forEach(m=>m.scale.setScalar(GEAR?T.arm*.66:T.arm));hand.forEach(h=>h.scale.setScalar((GEAR?.6:V2?.7:1)*gloveK));   // gloves sized to the jacket cuffs
+        [...uarm,...farm].forEach(m=>{m.scale.x=m.scale.z=T.arm;});elb.forEach(m=>m.scale.setScalar(GEAR?T.arm*.62:T.arm));shoulder.forEach(m=>m.scale.setScalar((GEAR?T.arm*.66:T.arm)*(J.bib||J.top?.74:1)));   // slimmer shoulder caps under a vest/tee so the bib straps showhand.forEach(h=>h.scale.setScalar((GEAR?.6:V2?.7:1)*gloveK));   // gloves sized to the jacket cuffs
         thigh.forEach(m=>{m.scale.x=m.scale.z=T.th;});shin.forEach(m=>{m.scale.x=m.scale.z=T.sn;});knee.forEach(m=>m.scale.setScalar(T.kn));}
     },
     pose(o,dt){
       const k=1-Math.exp(-dt*11);
-      let c=o.crouch||0,lean=.12+.78*c,tw=o.steer?-o.steer*.12:0,lX=0,tk=0,sy=0,ss=o.steer?o.steer*.12:0,hl=[11,3.5,9],hr=[-11,3.5,9],pd=[.18,-.5,-.85];
+      const st_=o.steer||0;let c=(o.crouch||0)+Math.abs(st_)*.12,lean=.12+.78*c,tw=-st_*.34,lX=0,tk=0,sy=0,ss=st_*.16,
+        hl=[11+st_*1.5,3.5-st_*3.2,9+st_*2.2],hr=[-11+st_*1.5,3.5+st_*3.2,9-st_*2.2],pd=[.18+st_*.3,-.5,-.85];   // carve: upper body faces downhill, inside pole reaches for a plant
       if(o.tuck){hl=[3.6,7,11.5];hr=[-3.6,7,11.5];pd=[.05,-.1,-1];lean=1.02;}
       if(o.air){hl=[15.5,7,3];hr=[-15.5,7,3];c=Math.max(c,.3);lean=.45;pd=[.4,-.3,-.87];}
       const GP=o.grab&&GRABPOSE[o.grab];if(GP){c=GP.c;lean=GP.lean;sy=GP.sy||0;lX=GP.lX||0;tk=GP.tk||0;tw=GP.tw||0;hl=GP.hl;hr=GP.hr;}
@@ -459,6 +491,7 @@ function makeRider(){
       if(o.tow){hl=[2.5,6,13];hr=[-2.5,6,13];pd=[.1,-.9,-.4];lean=.25;}   // both hands on the tow rope
       const SB=ride==='board';
       if(SB&&!GP&&!o.sit){lean*=.4;tw-=.3;if(!o.air&&!o.idle){hl=[11,-1,4];hr=[-11,-1,4];}c=Math.max(c,.38);}   // snowboard: upright, knees bent, arms out for balance
+      if(M.skiFlex){const fk=Math.min(1,dt*10);M.skiFlex.uS.value+=((o.flexS||0)-M.skiFlex.uS.value)*fk;M.skiFlex.uA.value+=((o.flexA||0)-M.skiFlex.uA.value)*fk;}
       s.c+=(c-s.c)*k;s.lean+=(lean-s.lean)*k;s.tw+=((tw+(o.look||0))-s.tw)*k;s.lX+=(lX-s.lX)*k;s.tk+=(tk-s.tk)*k;s.sy+=(sy-s.sy)*k;s.ss+=(ss-s.ss)*k;
       s.hl.lerp(tA.fromArray(hl),k);s.hr.lerp(tA.fromArray(hr),k);s.pd.lerp(tA.fromArray(pd),k);
       // goggle mode (player choice): on the face, pushed up on the helmet, or off; unset = lobby default behaviour

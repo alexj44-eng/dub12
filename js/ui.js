@@ -2,8 +2,9 @@
 'use strict';
 let view='play',lobbyYaw=.45,lobbyTilt=0,lobbyZoom=1,dragY=0,dragX=null,dragMoved=0,qT=0,lockCat='jacket',tryLoad=null;
 const mouse=new U.Vector2(),rayL=new U.Raycaster();
-const owned=id=>isStaff()||save.owned.includes(id);
-const lvlOk=l=>isStaff()||level()>=l;
+const FREE_ALL=true;   // limited-time event: every cosmetic and map is free
+const owned=id=>FREE_ALL||isStaff()||save.owned.includes(id);
+const lvlOk=l=>FREE_ALL||isStaff()||level()>=l;
 const coinHTML=n=>'<i class="coin"></i>'+n.toLocaleString();
 function toast(msg){const t=$('toast');t.innerHTML=msg;t.classList.remove('go');void t.offsetWidth;t.classList.add('go');}
 function statBars(id){const st=statOf(id);return '<div class="stats">'+['Speed','Pop','Spin'].map((n,i)=>'<div><span>'+n+'</span><i>'+'<b></b>'.repeat(st[i])+'<u></u>'.repeat(5-st[i])+'</i></div>').join('')+'</div>';}
@@ -13,7 +14,7 @@ function refreshWallet(){const lv=level(),x=save.xp%XP_PER_LVL;$('lvl').textCont
 function questProgress(v){ensureQuests();const done=[];save.q.list.forEach(q=>{if(q.prog>=q.goal)return;const a=v[q.k]||0;q.prog=q.max?Math.max(q.prog,a):q.prog+a;if(q.prog>=q.goal){q.prog=q.goal;done.push(q);}});return done;}
 
 /* ---------- modes & views ---------- */
-function setMode(m){mode=m;if(sk){if(sk.firstPerson)sk.firstPerson(false);else sk.head.visible=true;}const run=m==='run';$('ui').classList.toggle('hide',run);$('hud').classList.toggle('hide',!run);$('end').classList.add('hide');$('count').classList.add('hide');$('settings').classList.add('hide');paused=false;
+function setMode(m){if(m==='lobby'&&typeof NET!=='undefined'&&NET.rid&&!NET.queueing)netLeaveRoom();mode=m;if(sk){if(sk.firstPerson)sk.firstPerson(false);else sk.head.visible=true;}const run=m==='run';$('ui').classList.toggle('hide',run);$('hud').classList.toggle('hide',!run);$('end').classList.add('hide');$('count').classList.add('hide');$('settings').classList.add('hide');paused=false;
   $('ready').classList.remove('q');$('qstat').innerHTML='';
   if(run)scene.add(sk.root);else{lobby.add(sk.root);cv.style.background='linear-gradient(#2d4a9a 0%,#7f8fd0 38%,#f6b9a0 70%,#ffe2c4 100%)';setView('play');}}
 function setView(v){if(tryLoad&&v!=='shop'){tryLoad=null;sk.apply(save.load,save.body);}
@@ -27,20 +28,32 @@ function renderPlay(){if(!MAPS[save.map])save.map='park';const M=MAPS[save.map],
   $('mpName').textContent=M.n;$('mpSub').textContent=modeLabel()+' · '+M.diff;$('mpThumb').style.background=M.sky;
   $('ready').disabled=lk;$('ready').textContent=lk?'REACH LV '+M.lvl:'QUEUE';
   ensureQuests();$('qmini').innerHTML='<div class="lbl">Daily quests</div>'+save.q.list.map(q=>'<div class="qm'+(q.prog>=q.goal?' done':'')+'"><span>'+q.t+'</span><i style="width:'+(q.prog/q.goal*100)+'%"></i></div>').join('');}
-function toggleQueue(){if(mode==='queue'){mode='lobby';$('ready').classList.remove('q');renderPlay();$('qstat').innerHTML='';$('count').classList.add('hide');return;}
+function toggleQueue(){
+  // signed in + online: real matchmaking (party leader queues for everyone); otherwise the offline lobby with bots
+  if(typeof NET!=='undefined'&&NET.on){
+    if(mode==='queue'){NET.queueing=false;netLeaveRoom();mode='lobby';$('ready').classList.remove('q');renderPlay();$('qstat').innerHTML='';$('count').classList.add('hide');return;}
+    if(mode!=='lobby'||!lvlOk(MAPS[save.map].lvl))return;if(!netIsLeader()){toast('Your party leader starts the queue');return;}
+    setView('play');mode='queue';qT=0;$('ready').classList.add('q');$('ready').textContent='CANCEL';$('qstat').innerHTML='Finding riders…';
+    netQueue(save.map,save.gm).then(ok=>{if(!ok&&mode==='queue'&&!NET.rid){NET.queueing=false;qT=0;toast('Online matchmaking failed: starting offline');}});return;}
+  if(mode==='queue'){mode='lobby';$('ready').classList.remove('q');renderPlay();$('qstat').innerHTML='';$('count').classList.add('hide');return;}
   if(mode!=='lobby'||!lvlOk(MAPS[save.map].lvl))return;setView('play');mode='queue';qT=0;$('ready').classList.add('q');$('ready').textContent='CANCEL';}
 /* ---------- select screen: pick a mode and a map, then confirm ---------- */
-let selMap='park',selMode='battle';
+let selMap='park',selMode='battle',selCat=null;
+// map categories: PARK (jumps, rails, pipe), RACES (ski cross), RESORTS (free roam on real mountains)
+const mapCat=id=>MAPS[id].sx?'race':MAPS[id].fr?'resort':'park';
 function renderSelect(){if(!renderSelect.init){selMap=save.map;selMode=save.gm;}renderSelect.init=true;
   const fr=!!MAPS[selMap].fr;
   $('selModes').innerHTML=Object.keys(MODES).filter(id=>!MODES[id].hidden).map(id=>{const Mo=MODES[id],dis=fr;return '<div class="mode'+(!fr&&selMode===id?' on':'')+(dis?' dis':'')+'" data-m="'+id+'"><i>'+Mo.i+'</i><b>'+Mo.n+'</b><span>'+Mo.d+'</span></div>';}).join('')+
     (MAPS[selMap].sx?'<div class="mode on"><i>🏁</i><b>Ski Cross Race</b><span>You vs 3 riders out of the start gate. First to the finish wins.</span></div>':fr?'<div class="mode on"><i>🏔️</i><b>Free Roam</b><span>Explore the resort. No timer, no rivals.</span></div>':'');
   $('selModes').querySelectorAll('[data-m]').forEach(d=>d.onclick=()=>{if(fr)return;selMode=d.dataset.m;sfx('ui');renderSelect();});
-  $('selMaps').innerHTML=Object.keys(MAPS).map(id=>{const M=MAPS[id],lk=!lvlOk(M.lvl),b=save.best[(M.sx?'skix':M.fr?'free':selMode)+'_'+id];
+  if(!selCat)selCat=mapCat(selMap);
+  $('selCats').innerHTML=[['park','🏂 PARK'],['race','🏁 RACES'],['resort','🏔️ RESORTS']].map(([k,t])=>'<button data-c="'+k+'" class="'+(selCat===k?'on':'')+'">'+t+'</button>').join('');
+  $('selCats').querySelectorAll('button').forEach(b=>b.onclick=()=>{selCat=b.dataset.c;const first=Object.keys(MAPS).find(id=>mapCat(id)===selCat&&lvlOk(MAPS[id].lvl));if(first)selMap=first;sfx('ui');renderSelect();});
+  $('selMaps').innerHTML=Object.keys(MAPS).filter(id=>mapCat(id)===selCat).map(id=>{const M=MAPS[id],lk=!lvlOk(M.lvl),b=save.best[(M.sx?'skix':M.fr?'free':selMode)+'_'+id];
     return '<div class="smap'+(selMap===id?' on':'')+(lk?' lk':'')+'" data-m="'+id+'"><div class="sth" style="background:'+M.sky+'">'+(M.sx?'<em>RACE</em>':M.fr?'<em>FREE ROAM</em>':'')+'</div><b>'+(lk?'🔒 ':'')+M.n+'</b><span>'+M.zone+' · '+M.diff+'</span><small>'+(lk?'Unlocks at level '+M.lvl:M.d)+'</small><i>Best: '+(b?((selMode==='time'&&!M.fr)||M.sx?fmt(b):b.toLocaleString()):'—')+'</i></div>';}).join('');
   $('selMaps').querySelectorAll('.smap').forEach(d=>d.onclick=()=>{if(d.classList.contains('lk')){toast('Reach level '+MAPS[d.dataset.m].lvl+' to unlock');return;}selMap=d.dataset.m;sfx('ui');renderSelect();});
   $('selGo').textContent='CONFIRM · '+MAPS[selMap].n.toUpperCase();}
-function tickQueue(dt){qT+=dt;const bt=(save.gm==='battle'&&!MAPS[save.map].fr)||!!MAPS[save.map].sx;
+function tickQueue(dt){if(typeof NET!=='undefined'&&(NET.rid||NET.queueing)){if(NET.rid)netTickQueue();return;}qT+=dt;const bt=(save.gm==='battle'&&!MAPS[save.map].fr)||!!MAPS[save.map].sx;
   if(qT<2.2){const n=bt?Math.min(4,1+Math.floor(qT/.6)):1;
     $('qstat').innerHTML=bt?'Filling lobby '+n+'/4<br>'+['You'].concat(BOTS.map(b=>b.name)).slice(0,n).join(' · '):'Loading '+MAPS[save.map].n+'.'.repeat(1+((qT*3)|0)%3);}
   else{$('qstat').innerHTML=bt?'Lobby full':'Ready';$('count').classList.remove('hide');$('countMap').textContent=MODES[save.gm].n+' · '+MAPS[save.map].n;const n=3-Math.floor((qT-2.2)/.7);$('countN').textContent=n>0?n:'GO';if(qT>2.2+.7*3.4)startRun(save.map,save.gm);}}
@@ -137,6 +150,9 @@ function renderLocker(){
       POLECOL.forEach((c,i)=>{const d=document.createElement('button');d.className='swd'+(((save.body.pc||0)===i)?' on':'');d.title=c[0];d.style.background=c[2]?'linear-gradient(135deg,'+hex(c[1])+',#fff 55%,'+hex(c[1])+')':hex(c[1]);d.onclick=()=>setB('pc',i);box.appendChild(d);});}
     if(lockCat==='skis')prow();
     if(lockCat==='jacket')fit('Jacket fit: slim ↔ baggy','jf',.3);
+    if(lockCat==='jacket'&&IDX[save.load.jacket]&&IDX[save.load.jacket].bib){const l=document.createElement('div');l.className='lbl fitlbl';l.style.cssText='grid-column:1/-1;margin-top:8px';l.textContent='Race bib number';el.appendChild(l);
+      const n=document.createElement('input');n.type='number';n.min=1;n.max=999;n.step=1;n.value=save.body.bibNumber||12;n.className='fitr';n.style.cssText='grid-column:1/-1;height:34px';
+      n.onkeydown=e=>e.stopPropagation();n.oninput=()=>{save.body.bibNumber=Math.max(1,Math.min(999,+n.value||12));sk.apply(save.load,save.body);};n.onchange=()=>{persist();for(const k in THUMB)delete THUMB[k];};el.appendChild(n);}
     // size sliders for every piece of gear (80%..120%)
     if(lockCat==='helmet')fit('Helmet size','zh',.5);
     if(lockCat==='helmet'){const w=document.createElement('div');w.style.cssText='grid-column:1/-1;display:flex;gap:8px;margin-top:8px';
@@ -302,6 +318,7 @@ function wire(){
   const keysFor=code=>{const out=[];const B=binds();for(const a in B)if(B[a].includes(code))out.push(AM[a]);return out;};
   window.addEventListener('pointerdown',()=>audioStart(),{once:true});
   window.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(capture){e.preventDefault();doCapture(e.code);return;}
+    if(mode==='run'&&map&&map.rope&&!endShown&&e.code==='KeyE'&&!e.repeat&&$('settings').classList.contains('hide')){if(p.mode==='rope'||nearRope(p)){ropeToggle(p);return;}}
     // free-roam resort keys: M trail map, E ride the lift at the base, T skip to the top
     if(mode==='run'&&map&&map.fr&&curMode!=='skix'&&!endShown&&$('settings').classList.contains('hide')){
       if(e.code==='KeyM'&&!e.repeat){tmapOpen?closeTrailMap():openTrailMap();return;}
@@ -333,9 +350,9 @@ const SETS=[
  ['gameplay','popups','Trick popups','sel',[[1,'Show'],[0,'Hide']]],
  ['gameplay','bighead','Big-head mode','sel',[[0,'Off'],[1,'On']]],
  ['camera','view','View','sel',null],
- ['camera','zoom','Zoom','range',.6,1.8,.05,'x'],
+ ['camera','zoom','Zoom','range',.45,2.6,.05,'x'],
  ['camera','fov','Field of view','range',45,90,1,'°'],
- ['camera','rot','Flip & spin speed','range',.6,1.4,.05,'x'],
+ ['camera','rot','Flip & spin speed','range',.6,2.6,.05,'x'],
  ['camera','shake','Camera shake','sel',[[1,'On'],[0,'Off']]],
  ['graphics','tod','Time of day','sel',null],
  ['graphics','snow','Snowfall','sel',[[0,'Off'],[1,'Light'],[2,'Blizzard']]],
@@ -407,7 +424,7 @@ function boot(){window.DUB12_STEP&&DUB12_STEP('engine loaded');resize();
     if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{redrawAllSkis();});
     requestAnimationFrame(frame);
     setTimeout(()=>window.DUB12_BOOT_OK&&DUB12_BOOT_OK(),4000);   // survived the first seconds of rendering too
-  },e=>{console.error(e);
+  },e=>{console.error(e);window.DUB12_BOOT_OK&&DUB12_BOOT_OK();   // an error is not a crash: don't force safe mode next time
     // first failure: reload once (marked in the URL, so it can never loop); after that show the reason + a retry button
     if(!/[?&]retry=/.test(location.search)){location.replace(location.pathname+'?retry=1'+location.hash);return;}
     const log=(window.DUB12_LOG||[]).slice(-3).join('<br>').replace(/</g,'&lt;').replace(/&lt;br>/g,'<br>');

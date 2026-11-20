@@ -19,6 +19,7 @@ function initAccounts(){if(FB.inited)return;FB.inited=true;
   const local=persist;persist=function(){local();cloudSaveSoon();};
 }
 async function onAuth(u){if(u&&FB.signingUp)return;FB.user=u;
+  if(typeof netInit==='function'){if(u)setTimeout(netInit,500);else if(NET.db)netShutdown();else netUI();}   // online play follows the account
   // sign-up invite shows once per device (not every session); "Play as guest" or Esc dismisses it for good
   if(!u){FB.name=null;refreshAcctChip();let g=null;try{g=localStorage.getItem('dub12_guest')||sessionStorage.getItem('dub12_guest');}catch(e){}if(!g)openAccount('signup');return;}
   FB.loading=true;FB.noSync=true;   // never upload until this account's cloud save has loaded (a failed load must not overwrite it)

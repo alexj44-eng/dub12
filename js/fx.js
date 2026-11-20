@@ -66,7 +66,7 @@ function snowTextures(kind){if(SNOWC[kind])return SNOWC[kind];const N=512,r=rng(
   const nt=new U.CanvasTexture(nc),ct=new U.CanvasTexture(cc);[nt,ct].forEach(t=>{t.wrapS=t.wrapT=U.RepeatWrapping;t.anisotropy=renderer.capabilities.getMaxAnisotropy();});
   nt.encoding=U.LinearEncoding;return SNOWC[kind]={n:nt,c:ct};}
 function snowMaterial(kind,o){o=o||{};const T=snowTextures(kind==='cord'?'cord':'pow');
-  const m=new U.MeshStandardMaterial({map:T.c,normalMap:T.n,normalScale:new U.Vector2(.95,.95),vertexColors:!!o.vc,roughness:kind==='cord'?.62:.78,metalness:0,envMapIntensity:.85});
+  const m=new U.MeshStandardMaterial({map:T.c,normalMap:T.n,normalScale:new U.Vector2(.68,.68),vertexColors:!!o.vc,roughness:kind==='cord'?.68:.86,metalness:0,envMapIntensity:.72});
   m.onBeforeCompile=sh=>{sh.uniforms.uGlint={value:o.glint===undefined?1:o.glint};
     sh.vertexShader='varying vec3 vWP;\n'+sh.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\nvWP=(modelMatrix*vec4(transformed,1.0)).xyz;');
     sh.fragmentShader='varying vec3 vWP;uniform float uGlint;\n'+GLSL_NOISE+sh.fragmentShader

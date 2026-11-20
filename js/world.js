@@ -98,6 +98,17 @@ function buildMap(id){
     pitch();kicker(0,280,280,.85,70,400,.66,680,0xff7a1a);
     jib(700,[{x:-360,h:28,col:RC[4]},{x:-120,h:16,col:RC[5],box:1,arch:46},{x:120,h:26,col:RC[0]},{x:360,h:16,col:RC[3],box:1}]);
     pitch();kicker(0,300,320,.95,90,520,.7,860,0xff4d6d);   // XXL step
+    // JIB GARDEN: rails everywhere — flat rails, tubes, ledges, rainbows, transfer pairs, rail-to-rail gaps, kinks and a long flat-down
+    jib(560,[{x:-470,h:16,col:RC[3],box:1},{x:-330,h:20,col:RC[0]},{x:-190,h:22,col:RC[1],arch:44},{x:-45,h:18,col:RC[2]},{x:45,h:18,col:RC[2]},{x:190,h:24,col:RC[4]},{x:330,h:16,col:RC[5],box:1},{x:470,h:20,col:RC[0]}]);
+    {seg(420,B);const a=X();seg(500,B);const m=X();seg(160,B);const b=X();seg(500,B);const c=X();   // rail-to-rail gaps: two rails in line, hop the gap between them
+      [-300,0,300].forEach((x,i)=>{rail(x,20,a,m,RC[i]);rail(x,26,b,c,RC[i+2]);});
+      rail(-150,18,a,c,RC[5],1,{nm:'Long Ledge'});rail(150,18,a,c,RC[4],0,{nm:'Long Rail'});seg(360,B);}
+    // kink section: down-flat-down-flat-down (double kink rails) across 5 lanes
+    jib(0,[{x:-360,h:20,col:RC[0]},{x:-180,h:16,col:RC[3],box:1},{x:0,h:22,col:RC[1]},{x:180,h:16,col:RC[2],box:1},{x:360,h:20,col:RC[4]}],()=>{seg(150,.5);seg(170,.07);seg(150,.5);seg(170,.07);seg(150,.5);});
+    // transfer pairs (rails close together: hop from one to the other)
+    jib(520,[{x:-320,h:14,col:RC[1],box:1},{x:-120,h:20,col:RC[0]},{x:-60,h:20,col:RC[3]},{x:60,h:20,col:RC[3]},{x:120,h:20,col:RC[0]},{x:320,h:14,col:RC[5],box:1}]);
+    // flat-down mega rails
+    jib(0,[{x:-200,h:30,col:RC[2]},{x:200,h:30,col:RC[4]}],()=>{seg(320,.08);seg(420,.5);});
     // superpipe: 22 ft walls, flat bottom, long and steady
     {seg(260,B,.3);const a=X();seg(3400,.3);M.pipes.push({z1:a,z2:X(),cx:0,flat:150,R:200,H:190});seg(260,.3,B);}
     kicker(0,240,200,.66,50,260,.6,440,0x39d98a);
@@ -111,6 +122,7 @@ function buildMap(id){
     jib(700,[{x:-120,h:26,col:0xff4d6d},{x:120,h:16,col:0x58d7ff,box:1}]);
   }
   seg(300,B);M.finishZ=X();seg(400,B,0);seg(1800,0);
+  if(id==='megapark')M.rope={x:M.hw-90,zTop:420,zBot:M.finishZ+200};   // rope tow up the right edge of Mega Park
   const n=M.n=ys.length;M.ys=Float32Array.from(ys);M.yb=Float32Array.from(ys);M.fidx=new Int16Array(n).fill(-1);M.len=(n-1)*S;
   M.feat.forEach((f,k)=>{for(let i=f.i0;i<=f.i1;i++){M.yb[i]=ys[f.i0]+(ys[f.i1]-ys[f.i0])*(i-f.i0)/(f.i1-f.i0);M.fidx[i]=k;}});
   map=M;
@@ -125,7 +137,7 @@ function buildMap(id){
   M.buckets={};M.trees.forEach(t=>{t.y=hAt(t.x,t.z);t.rad=10*t.s+4;t.h=70*t.s;addCol(M,t);});
   const cl01=v=>Math.max(0,Math.min(1,v));
   M.rails.forEach(R=>{R.yAt=R.lin?(z=>R.ya+(R.yb-R.ya)*cl01((z-R.z1)/(R.z2-R.z1))):(z=>hAt(R.x,z)+R.h+R.arch*Math.sin(Math.PI*cl01((z-R.z1)/(R.z2-R.z1))));
-    R.name=R.box?'Box':R.arch?'Rainbow Rail':R.lin?'Handrail':R.h>40?'Mega Rail':'Rail';});
+    R.name=R.nm||(R.box?(R.z2-R.z1>700?'Ledge':'Box'):R.arch?'Rainbow Rail':R.lin?'Handrail':R.h>40?'Mega Rail':'Rail');});
   return M;
 }
 /* colliders live in 300-unit z buckets; circles {x,z,rad,y,h} or rotated boxes {box,x,z,hx,hz,cs,sn,y,h} */
@@ -220,7 +232,14 @@ function buildGfx(){
   // trees: Blender-built snow-loaded pines (falls back to the original low-poly ones)
   const tf=(d,t)=>{d.position.set(t.x,t.y-6,t.z);d.scale.setScalar(t.s*(HQ?.62:1));d.rotation.set(0,t.x*.37+t.z*.11,(Math.sin(t.x*.13+t.z)*.03));};
   const tn=HQ?['pine_hq_a','pine_hq_b','pine_hq_c']:['pine_a','pine_b'];
-  tn.forEach((n,k)=>{const L=M.trees.filter((t,i)=>i%tn.length===k);if(L.length)instParts(n,L,tf,k===1?Object.assign({},tm,{needles:envMat('needles',C.tree[1],{roughness:.85})}):tm).forEach(m=>runG.add(m));});
+  // mixed forest: pines, plus bare winter birches and snowy bushes (every 5th / 7th tree) so it isn't just evergreens
+  if(typeof procTrees==='function')procTrees();
+  const kindOf=(t,i)=>A.birch_p&&i%5===2?'birch':A.bush_p&&i%7===4?'bush':'pine',PT=M.trees.filter((t,i)=>kindOf(t,i)==='pine');
+  tn.forEach((n,k)=>{const L=PT.filter((t,i)=>i%tn.length===k);if(L.length)instParts(n,L,tf,k===1?Object.assign({},tm,{needles:envMat('needles',C.tree[1],{roughness:.85})}):tm).forEach(m=>runG.add(m));});
+  if(A.birch_p){const bm_={birch:std(0xffffff,{map:birchTex(),roughness:.8}),birch_br:std(0x4a3f38,{roughness:.9}),needles:tm.needles,snow:tm.snow};
+    const BL=M.trees.filter((t,i)=>kindOf(t,i)==='birch'),SL=M.trees.filter((t,i)=>kindOf(t,i)==='bush');
+    ['birch_p','birch_p2'].forEach((n,k)=>{const L=BL.filter((t,i)=>i%2===k);if(L.length)instParts(n,L,(d,t)=>{d.position.set(t.x,(t.y!==undefined?t.y:hAt(t.x,t.z))-4,t.z);d.scale.setScalar(t.s*.9);d.rotation.set(0,t.x*.31+t.z*.07,0);},bm_).forEach(m=>runG.add(m));});
+    if(SL.length)instParts('bush_p',SL,(d,t)=>{d.position.set(t.x,(t.y!==undefined?t.y:hAt(t.x,t.z))-3,t.z);d.scale.set(t.s*1.2,t.s,t.s*1.2);},bm_).forEach(m=>runG.add(m));}
   const RK=A.rock_hq_a?'rock_hq_a':'rock',rk={rock:envMat('rock',C.ice?0x9fc8e8:0x6d7686,{roughness:C.ice?.25:.95}),snow:tm.snow};
   if(M.cliffs.length){const L=[],r=rng(4);M.cliffs.forEach(c=>{for(let i=0;i<42;i++){const x=-740+i*36+r()*14;L.push({x,y:hAt(x,c.z-4)-c.h*.5,z:c.z+10+r()*8,sy:c.h/34*(.8+r()*.4),s:.9+r()*.6,rz:.5+r()*.4,a:r()*6});}});
     instParts(RK,L,(d,t)=>{d.position.set(t.x,t.y,t.z);d.scale.set(t.s,t.sy,t.rz);d.rotation.set(0,t.a,0);},rk).forEach(m=>runG.add(m));}
@@ -242,15 +261,29 @@ function buildGfx(){
   (M.pipes||[]).forEach(P=>{if(P.qp)return;[-1,1].forEach(sd=>{const x=P.cx+sd*(P.flat+P.R*.985),L=P.z2-P.z1;
     for(let z=P.z1;z<P.z2;z+=400){const y=hAt(x,z+200);const b=add(new U.BoxGeometry(6,3,400),new U.MeshBasicMaterial({color:0x2a6bff}),x,y+1,z+200);b.rotation.x=Math.atan2(hAt(x,z)-hAt(x,z+400),400);b.castShadow=false;}});});
   // blue dye lines like a real park: across every lip and knuckle, and down both sides of each jump
+  M.rails.forEach(R=>{if(R.lin)return;dyeLine(R.x-R.w-14,R.z1-30,R.x+R.w+14,R.z1-30,5,hAt);});   // marks every rail and box take-off
   M.lips.forEach(l=>{if(l.hw>2000)return;dyeLine(l.cx-l.hw,l.z2-3,l.cx+l.hw,l.z2-3,6,hAt);});
   (M.knuck||[]).forEach(k=>{if(k.hw>2000)return;dyeLine(k.cx-k.hw,k.z,k.cx+k.hw,k.z,6,hAt);});
   M.feat.forEach(f=>{if(f.hw>2000)return;const z0=f.i0*S,z1=f.i1*S;[-1,1].forEach(sd=>dyeLine(f.cx+sd*f.hw,z0,f.cx+sd*f.hw,z1,3,hAt));});
+  // rope tow: steel posts with pulley wheels, a moving rope with handles, bottom hut and sign
+  if(M.rope){const R=M.rope,steelM=std(0x2b2e35,{roughness:.4,metalness:.7}),ropeM=std(0xd8c27a,{roughness:.8}),H=34,pts=[],pts2=[];
+    for(let z=R.zTop;z<=R.zBot;z+=60){pts.push(new U.Vector3(R.x,hAt(R.x,z)+H,z));pts2.push(new U.Vector3(R.x+22,hAt(R.x+22,z)+H+2,z));}
+    [pts,pts2].forEach(P=>{const m=add(new U.TubeGeometry(new U.CatmullRomCurve3(P),Math.min(2000,P.length*2),.9,5,false),ropeM,0,0,0);m.castShadow=false;});
+    for(let z=R.zTop;z<=R.zBot;z+=700){const y=hAt(R.x+11,z);add(new U.CylinderGeometry(2.2,2.8,H+14,8),steelM,R.x+11,y+(H+14)/2-6,z);add(new U.BoxGeometry(34,3,4),steelM,R.x+11,y+H+5,z);
+      [0,22].forEach(o=>{const w=add(new U.CylinderGeometry(4,4,2,14),steelM,R.x+o,y+H+2,z);w.rotation.z=Math.PI/2;});}
+    const hut=add(new U.BoxGeometry(70,60,70),std(0x7a5232,{roughness:.85}),R.x+60,hAt(R.x+60,R.zBot)+28,R.zBot+40);add(new U.BoxGeometry(84,6,84),std(0x2b2e35,{roughness:.6}),R.x+60,hAt(R.x+60,R.zBot)+61,R.zBot+40);
+    const sc=document.createElement('canvas');sc.width=512;sc.height=128;const sg=sc.getContext('2d');sg.fillStyle='#1f5fff';sg.fillRect(0,0,512,128);sg.fillStyle='#fff';sg.font='900 54px Impact,Arial Black,sans-serif';sg.textAlign='center';sg.textBaseline='middle';sg.fillText('ROPE TOW · PRESS E',256,66);
+    const sign=add(new U.PlaneGeometry(90,22),new U.MeshBasicMaterial({map:new U.CanvasTexture(sc),side:U.DoubleSide}),R.x-30,hAt(R.x-30,R.zBot-60)+44,R.zBot-60);sign.rotation.y=Math.PI;
+    // moving handles on the rope
+    const n=Math.floor((R.zBot-R.zTop)/240),hm=new U.InstancedMesh(new U.BoxGeometry(2,10,2),std(0xff4d6d,{roughness:.5}),n*2);hm.castShadow=false;runG.add(hm);runG.userData.ropeH={hm,n,t:0,R,H};}
   // lips & flags
   M.lips.forEach(l=>[-1,1].forEach(sd=>{const x=l.cx+sd*(l.hw+6),y=hAt(l.cx,l.z2-4);add(new U.CylinderGeometry(1.2,1.2,70,6),dark,x,y+30,l.z2);
     add(new U.BoxGeometry(26,14,1),new U.MeshBasicMaterial({color:l.col}),x+sd*13,y+56,l.z2);}));
   // rails and boxes: full-size park features — painted steel rails on posts with base plates, UHMW-topped boxes with steel coping
-  const steel=std(0x8a8f99,{roughness:.32,metalness:.9}),uhmw=std(0x2b2e35,{roughness:.42}),plate=std(0x3a3e46,{roughness:.5,metalness:.7});
+  const steel=std(0x8a8f99,{roughness:.32,metalness:.9}),uhmw=std(0xf4f6fa,{roughness:.35}),plate=std(0x3a3e46,{roughness:.5,metalness:.7});
   const postG=new U.CylinderGeometry(2.4,2.4,1,10),plateG=new U.BoxGeometry(20,1.6,20);postG.translate(0,.5,0);postG.userData.shared=plateG.userData.shared=true;
+  // park look: rails are blue or black, boxes have blue sides with a white sliding surface
+  {let ri=0;M.rails.forEach(R=>{R.col=R.box?0x1f5fff:(ri++%2?0x15161a:0x1f5fff);});}
   M.rails.forEach(R=>{const pts=railPath(R);
     if(R.box){const ww=R.w*1.85,skin=std(R.col,{roughness:.45,metalness:.15});
       for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1],L=a.distanceTo(b),mid=a.clone().add(b).multiplyScalar(.5);

@@ -86,7 +86,7 @@ function featDelta(F,sx,u){const dx=Math.abs(sx),w=1-ssR(F.hw,F.hw+34,dx);if(w<=
 
 /* ---------- build ---------- */
 // real resorts are laid out 30% bigger than the OSM trace so runs, lifts and lodges have room to breathe
-const RD_STRETCH=1.6,RD_CACHE={};
+const RD_STRETCH=1.82,RD_CACHE={};
 function stretchRD(D){if(!D||RD_CACHE[D.id])return D&&RD_CACHE[D.id];const k=RD_STRETCH,o=Object.assign({},D,{W:Math.round(D.W*k),L:Math.round(D.L*k),baseZ:Math.round(D.baseZ*k),
   trails:D.trails.map(([n,d,pts,ex])=>[n,d,pts.map(([x,z])=>[x*k,z*k]),ex]),lifts:D.lifts.map(L=>Object.assign({},L,{x:L.x*k,top:L.top*k,base:L.base*k}))});return RD_CACHE[D.id]=o;}
 function buildResort(rid){
@@ -98,7 +98,8 @@ function buildResort(rid){
   const src=RD?RD.trails.map(([n,d,pts,ex])=>[n,d,pts,ex]):BM_TRAILS.map(([n,d,pts,ex])=>[n,d,pts.map(([px,py])=>[MX(px),MZ(py)]),ex]);
   // runs are cut wide (room for proper turns); real resorts keep their mapped centre lines
   M.trails=src.map(([n,d,pts,ex])=>{const T=Object.assign({n,d,pts:pts.slice(),a2:(RD?6:12)+r()*(RD?8:16),f2:.0016+r()*.0008,p2:r()*6.28},ex||{});
-    T.w=DIFF[d].w*(.9+r()*.2)*1.45;T.zs=T.pts[0][1];T.ze=T.pts[T.pts.length-1][1];T.glade=d==='glade';
+    T.w=DIFF[d].w*(.9+r()*.2)*1.32;T.zs=T.pts[0][1];T.ze=T.pts[T.pts.length-1][1];T.glade=d==='glade';
+    if(RD&&T.skix)delete T.skix;   // only Blue Mountain keeps a ski cross course
     if(T.skix){T.a2=RD?160:190;T.f2=RD?.0024:.0026;T.p2=0;T.w=RD?220:240;}   // ski cross: wide open course in big S-turns
     return T;}).filter(T=>T.ze-T.zs>200);
   // grid: escarpment profile, gentle undulation, groomed runs, rough glades and forest floor
@@ -134,14 +135,17 @@ function buildResort(rid){
       let z=T.zs+260,k=0;M.gates.push({x:trailX(T,T.zs+130),z:T.zs+130,T});T.finZ=T.ze-160;T.sxp=[];
       const ph=z=>z*T.f2+T.p2,curv=z=>-Math.sin(ph(z)),R_=(z0,len,H)=>M.F.push({t:'roller',cx:trailX(T,z0),z0,zA:z0,zB:z0+len,len,H,hw:T.w*.92,trail:T.n});
       for(let q=0;q<3;q++){R_(z,140,20);z+=150;}z+=120;                                   // start section rollers
-      const seq=['table','double','step','rhythm','table','double','big'];
+      const seq=RD?['table','double','step','rhythm','table','double','big']:['table','stepup','rhythm','double','spine','big','wu','step','rhythm','table','double','stepup'];
       while(z<T.ze-1300){const s=Math.sin(ph(z+300));
-        if(Math.abs(s)>.8){const side=-Math.sign(curv(z+300));M.F.push({t:'berm',cx:trailX(T,z+300),z0:z,zA:z,zB:z+620,len:620,H:84,hw:T.w*.95,side,trail:T.n});T.sxp.push({z:z+310,side});z+=700;continue;}
+        if(Math.abs(s)>.8){const side=-Math.sign(curv(z+300));M.F.push({t:'berm',cx:trailX(T,z+300),z0:z,zA:z,zB:z+620,len:620,H:RD?84:112,hw:T.w*.95,side,trail:T.n});T.sxp.push({z:z+310,side});z+=700;continue;}
         const f=seq[k++%seq.length];
         if(f==='table')z+=kick(T,z,'M',0x2a6bff)+160;
         else if(f==='big')z+=kick(T,z,'L',0x2a6bff)+200;
         else if(f==='double'){R_(z,170,30);R_(z+230,170,30);z+=520;}                       // two big rollers: jump from the first to the back of the second
-        else if(f==='step'){R_(z,300,34);z+=420;}                                          // step-down
+        else if(f==='step'){R_(z,300,34);z+=420;}
+        else if(f==='stepup'){z+=kick(T,z,'S',0x2a6bff)*.55;R_(z,260,44);z+=380;}          // step-up: short kicker into a taller landing roller
+        else if(f==='spine'){R_(z,120,38);z+=128;R_(z,120,38);z+=260;}                      // spine: two sharp crests back to back
+        else if(f==='wu'){z+=kick(T,z,'M',0x2a6bff,-T.w*.35)+40;z+=kick(T,z,'M',0x2a6bff,T.w*.35)+160;}   // wu-tang: two offset kickers, pick a line                                          // step-down
         else{for(let q=0;q<5;q++){R_(z,110,16);z+=118;}z+=120;}}                           // rhythm section
       z=Math.max(z,T.ze-1250);z+=kick(T,z,'L',0x2a6bff);}                                   // final jump to the finish
     else if(T.n==='Smart Alec'){// GS course: alternating red/blue giant-slalom gates top to bottom
@@ -171,7 +175,7 @@ function buildResort(rid){
   // trees: dense forest between runs, thinned glades, open summit farmland and village
   for(let z=RS.ZMIN+60;z<RS.L-80;z+=88)for(let x=-RS.W+60;x<RS.W-60;x+=88){const tx=x+(r()-.5)*70,tz=z+(r()-.5)*70;
     if(at(GR,tx,tz)>.01||at(GR,tx+120,tz)>.2||at(GR,tx-120,tz)>.2)continue;const glade=at(GL,tx,tz);   // clear tree-free edge along every run
-    const p=tz<120?.03:tz>RS.baseZ-150?.04:glade?.09:(RD?.15:.24);   // thinner forest overall
+    const p=tz<120?.025:tz>RS.baseZ-150?.035:glade?.065:(RD?.13:.19);   // thinner forest overall
     if(M.lifts.some(L=>Math.abs(tx-L.x)<230&&tz>L.top-200&&tz<L.base+200))continue;
     if(M.lifts.some(L=>tx>L.x-260&&tx<L.x+680&&tz>L.top-260&&tz<L.top+760))continue;   // open unload bay at every lift top
     if(M.carpets.some(c=>Math.abs(tx-c.x)<90&&tz>c.z1-60&&tz<c.z2+60))continue;
@@ -342,6 +346,7 @@ function buildResortGfx(M,C,add,std,tm){
   if(A.rock_hq_a&&M.rocks.length){const rk={rock:std(0x6d7686,{roughness:.95}),snow:tm.snow};instChunks([['rock_hq_a','rock_hq_b'],['rock_hq_a']],M.rocks,(d,t)=>{d.position.set(t.x,t.y-6*t.s,t.z);d.scale.setScalar(t.s*1.4);d.rotation.set(0,t.x*.7,(t.z%3)*.05);},()=>rk,1500);}
   // buildings + name boards
   // dye lines on every jump: lip, knuckle, both edges
+  M.rails.forEach(R=>dyeLine(R.x-R.w-14,R.z1-30,R.x+R.w+14,R.z1-30,5,resortH));
   M.F.forEach(F=>{if(F.t!=='kick')return;const h=resortH;dyeLine(F.cx-F.hw,F.z0-2,F.cx+F.hw,F.z0-2,4,h);dyeLine(F.cx-F.hw,F.z0+F.T,F.cx+F.hw,F.z0+F.T,4,h);
     [-1,1].forEach(sd=>dyeLine(F.cx+sd*F.hw,F.zA+10,F.cx+sd*F.hw,F.zB-10,3,h));});
   const night=!!C.night,bm={wood:std(0x8a5a36,{roughness:.85,vertexColors:true}),wood_dark:std(0x4a3020,{roughness:.9,vertexColors:true}),snow:tm.snow,concrete:std(0x8f9096,{roughness:.95,vertexColors:true}),
@@ -501,6 +506,7 @@ function raceStep(dt){if(!RACE||curMode!=='skix')return;RACE.t+=dt;const T=RACE.
   if(!RACE.go){const n=Math.ceil(3-RACE.t);$('timer').textContent=n>0?String(n):'GO!';if(RACE._n!==n){RACE._n=n;sfx(n>0?'ui':'trick',.8);}if(RACE.t>=3){RACE.go=true;sfx('trick',1);}}
   else $('timer').textContent=fmt(Math.max(0,T));
   (runG.userData.gateBars||[]).forEach(b=>{if(RACE.go)b.rotation.x+=(1.45-b.rotation.x)*Math.min(1,dt*10);});
+  if(RACE.go){const S=RACE.T,len=S.finZ-S.zs;RACE.sp=RACE.sp||[0,0,0];for(let k=0;k<3;k++){const zk=S.zs+len*(k+1)/4;if(!RACE.sp[k]&&p.z>zk){RACE.sp[k]=T;const pos=riders.filter(r=>r.z>zk).length;toast('Split '+(k+1)+' · '+fmt(T)+' · '+['1st','2nd','3rd','4th'][Math.min(3,pos-1)]);}}}
   for(const r of riders)if(!r.fin&&r.z>RACE.T.finZ){r.fin=true;r.ft=T;RACE.order.push(r);if(r===p){p.time=T;toast('<b>'+['1st','2nd','3rd','4th'][RACE.order.length-1]+'</b> · '+fmt(T));sfx('buy');}}}
 function raceRank(){const fin=RACE?RACE.order.slice():[];return fin.concat(riders.filter(r=>!fin.includes(r)).sort((a,b)=>b.z-a.z));}
 // bots: follow the course line in their own lane, tuck on the straights, carve the berms

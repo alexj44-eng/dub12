@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>window.DUB12_V='mwofksa0';</script>
 <script>window.DUB12_DRACO='lib/draco/';</script>
-<script>window.DUB12_V='hf33111';</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DUB12</title>
@@ -16,6 +16,26 @@ button{font-family:inherit;color:inherit}
 .coin{display:inline-block;width:.95em;height:.95em;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6c4,#ffd23f 45%,#c99a06);box-shadow:inset 0 0 0 1.5px #a87d02;vertical-align:-.12em;margin-right:.3em}
 .lbl{font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:#b8c0dc;margin:2px 0 8px}
 .glass{background:rgba(10,14,34,.78);border:1px solid rgba(255,255,255,.12);border-radius:16px;backdrop-filter:blur(10px)}
+#partyBox{margin-top:10px;background:rgba(10,14,30,.55);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;font:600 13px Inter,sans-serif;max-width:300px}
+#partyBox .pb-h{font:800 11px Inter,sans-serif;letter-spacing:.18em;opacity:.85;margin-bottom:6px}#partyBox .pb-h span{color:#39d98a;letter-spacing:0;margin-left:6px}
+#partyBox .pb-m{padding:3px 0}#partyBox .pb-m button{margin-left:6px;background:none;border:0;color:#ff6b7d;cursor:pointer}
+#partyBox .pb-s{opacity:.7;font-weight:500}#partyBox .pb-i{display:flex;gap:6px;margin-top:8px}
+#partyBox input{flex:1;min-width:0;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:#fff;padding:7px 9px;font:600 13px Inter,sans-serif}
+#partyBox button.p,#invBox button.p{background:#ffd23f;color:#141416;border:0;border-radius:8px;padding:7px 12px;font:800 12px Inter,sans-serif;cursor:pointer}
+#partyBox .pb-l{margin-top:8px;background:none;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:5px 10px;font:700 11px Inter,sans-serif;cursor:pointer}
+#invBox{position:fixed;top:70px;right:16px;z-index:60;display:flex;flex-direction:column;gap:8px}
+#invBox .inv{background:#141a33;border:1px solid rgba(255,210,63,.6);border-radius:12px;padding:12px 14px;font:600 13px Inter,sans-serif;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#invBox .inv div{display:flex;gap:8px;margin-top:8px}#invBox .inv button:not(.p){background:none;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:7px 12px;cursor:pointer}
+#mapLoad{position:fixed;inset:0;z-index:45;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:16px;transition:opacity .4s}
+#mapLoad.out{opacity:0}#mapLoad.hide{display:none}
+#mapLoad:before{content:'';position:absolute;inset:0;background:linear-gradient(transparent 40%,rgba(5,8,22,.75));pointer-events:none}
+#mapLoad>*{position:relative}
+#mapLoad .ml-zone{font:700 12px Inter,sans-serif;letter-spacing:.3em;text-transform:uppercase;opacity:.8}
+#mapLoad .ml-name{font-family:Bungee,Impact,sans-serif;font-size:clamp(34px,7vw,72px);margin:6px 0 10px;text-shadow:0 5px 0 rgba(0,0,0,.35)}
+#mapLoad .ml-desc{max-width:560px;font:500 15px Inter,sans-serif;opacity:.9;line-height:1.5}
+#mapLoad .ml-bar{width:min(420px,80vw);height:8px;border-radius:6px;background:rgba(255,255,255,.18);margin:28px 0 14px;overflow:hidden}
+#mapLoad .ml-bar i{display:block;height:100%;width:8%;background:#ffd23f;border-radius:6px}
+#mapLoad .ml-tip{font:600 13px Inter,sans-serif;opacity:.75}
 #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0b1024;z-index:50}
 #loading h1{font-family:Bungee,Impact,sans-serif;font-size:72px;transform:rotate(-3deg);text-shadow:0 6px 0 #ff4d6d}
 #loading p{margin-top:16px;font-size:12px;letter-spacing:.3em;text-transform:uppercase;opacity:.7}
@@ -54,7 +74,11 @@ button{font-family:inherit;color:inherit}
 #selBtn{bottom:196px;font:800 13px Inter;letter-spacing:.16em;color:#fff;background:rgba(10,14,34,.82);border:2px solid #ffd23f;border-radius:12px;padding:13px 0;cursor:pointer}
 #selBtn:hover{background:#ffd23f;color:#0b1024}
 #selBox{position:absolute;left:24px;right:24px;top:14px;bottom:24px;padding:18px;display:flex;flex-direction:column;overflow:hidden}
-#selModes{grid-template-columns:repeat(4,minmax(0,1fr))}#selModes .mode.dis{opacity:.3;cursor:default}
+#selModes{grid-template-columns:repeat(4,minmax(0,1fr))}#selModes .mode.dis{opacity:.45;cursor:default}
+#selBox{background:rgba(10,14,34,.94);border-radius:18px}#selBox .mode{background:rgba(255,255,255,.1);color:#fff}#selBox .mode b{color:#fff}#selBox .mode span{opacity:.92;color:#dfe5f7}
+#selBox .mode.on{background:rgba(255,210,63,.22)}#selBox .mode.on b{color:#ffd23f}
+.selcats{display:flex;gap:8px;margin:0 0 10px}.selcats button{flex:1;background:rgba(255,255,255,.08);border:2px solid transparent;color:#fff;border-radius:10px;padding:9px 6px;font:800 12px Inter,sans-serif;letter-spacing:.12em;cursor:pointer}
+.selcats button.on{border-color:#ffd23f;background:rgba(255,210,63,.18);color:#ffd23f}
 #selMaps{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-content:start;padding:2px}
 .smap{border-radius:14px;background:rgba(255,255,255,.06);border:2px solid transparent;cursor:pointer;overflow:hidden;display:flex;flex-direction:column}
 .smap:hover{border-color:rgba(255,255,255,.35)}.smap.on{border-color:#ffd23f;box-shadow:0 0 0 3px rgba(255,210,63,.25)}.smap.lk{opacity:.55}
@@ -310,10 +334,13 @@ button{font-family:inherit;color:inherit}
 #spane input[type=text]{font:700 13px Inter;padding:7px 10px;border-radius:8px;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;width:150px;margin:0}
 #fps{position:absolute;left:18px;bottom:18px;font:800 11px Inter;background:rgba(11,16,36,.5);padding:4px 8px;border-radius:6px}
 </style>
-<link rel="preload" href="assets/models.glb?v=hf33111" as="fetch" crossorigin><link rel="preload" href="assets/env.glb?v=hf33111" as="fetch" crossorigin><link rel="preload" href="assets/gear.glb?v=hf33111" as="fetch" crossorigin><link rel="preload" href="assets/extra.glb?v=hf33111" as="fetch" crossorigin>
+
+<link rel="preload" href="assets/models.glb?v=mwofksa0" as="fetch" crossorigin><link rel="preload" href="assets/env.glb?v=mwofksa0" as="fetch" crossorigin><link rel="preload" href="assets/gear.glb?v=mwofksa0" as="fetch" crossorigin><link rel="preload" href="assets/extra.glb?v=mwofksa0" as="fetch" crossorigin>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="invBox"></div>
+<div id="mapLoad" class="hide"><div class="ml-zone"></div><div class="ml-name"></div><div class="ml-desc"></div><div class="ml-bar"><i></i></div><div class="ml-tip"></div></div>
 <div id="loading"><h1>DUB<span style="color:#ffd23f">12</span></h1><p>Waxing skis…</p></div>
 <script>
 /* loading watchdog: never leave a player on a silent "Waxing skis…" screen. Shows the real reason + a retry button. */
@@ -353,6 +380,7 @@ button{font-family:inherit;color:inherit}
     <div class="glass p" id="qmini"></div>
     <div id="hintC">Click your rider to open the locker · drag to spin</div>
     <div class="rb" id="qstat"></div>
+    <div class="rb" id="partyBox"></div>
     <button class="p rb" id="selBtn">SELECT MAP &amp; MODE</button>
     <div class="glass p rb hcard" id="mapCard"><div class="ic" id="mpThumb"></div><div><b id="mpName"></b><span id="mpSub"></span></div><em>CHANGE</em></div>
     <button class="p rb" id="ready">QUEUE</button>
@@ -362,7 +390,7 @@ button{font-family:inherit;color:inherit}
     <div class="glass p" id="selBox">
       <div class="shd"><div class="ttl" style="margin:0">Select</div><button class="btn ghost" id="selBack" style="margin-left:auto">BACK</button></div>
       <div class="lbl">Mode</div><div class="modes" id="selModes"></div>
-      <div class="lbl" style="margin-top:14px">Map</div><div id="selMaps"></div>
+      <div class="lbl" style="margin-top:14px">Map</div><div class="selcats" id="selCats"></div><div id="selMaps"></div>
       <div class="selfoot"><button class="btn" id="selGo">CONFIRM</button></div>
     </div>
   </section>
@@ -484,18 +512,19 @@ button{font-family:inherit;color:inherit}
 <script src="lib/EffectComposer.js"></script>
 <script src="lib/RenderPass.js"></script>
 <script src="lib/ShaderPass.js"></script>
-<script src="lib/UnrealBloomPass.js"></script><script src="js/color.js?v=hf33111"></script>
-<script src="js/resorts_data.js?v=hf33111"></script>
-<script src="js/data.js?v=hf33111"></script>
-<script src="js/audio.js?v=hf33111"></script>
-<script src="js/rider.js?v=hf33111"></script>
-<script src="js/world.js?v=hf33111"></script>
-<script src="js/resort.js?v=hf33111"></script>
-<script src="js/lobby.js?v=hf33111"></script>
-<script src="js/game.js?v=hf33111"></script>
-<script src="js/fx.js?v=hf33111"></script>
-<script src="js/ui.js?v=hf33111"></script>
-<script src="js/firebase-config.js?v=hf33111"></script>
-<script src="js/account.js?v=hf33111"></script>
+<script src="lib/UnrealBloomPass.js"></script><script src="js/color.js?v=mwofksa0"></script>
+<script src="js/resorts_data.js?v=mwofksa0"></script>
+<script src="js/data.js?v=mwofksa0"></script>
+<script src="js/audio.js?v=mwofksa0"></script>
+<script src="js/rider.js?v=mwofksa0"></script>
+<script src="js/world.js?v=mwofksa0"></script>
+<script src="js/resort.js?v=mwofksa0"></script>
+<script src="js/lobby.js?v=mwofksa0"></script>
+<script src="js/game.js?v=mwofksa0"></script>
+<script src="js/fx.js?v=mwofksa0"></script>
+<script src="js/ui.js?v=mwofksa0"></script>
+<script src="js/firebase-config.js?v=mwofksa0"></script>
+<script src="js/account.js?v=mwofksa0"></script>
+<script src="js/net.js?v=mwofksa0"></script>
 </body>
 </html>
