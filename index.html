@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>window.DUB12_V='mwoglm61';</script>
+<script>window.DUB12_V='mwppvvvl';</script>
 <script>window.DUB12_DRACO='lib/draco/';</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,14 +16,14 @@ button{font-family:inherit;color:inherit}
 .coin{display:inline-block;width:.95em;height:.95em;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6c4,#ffd23f 45%,#c99a06);box-shadow:inset 0 0 0 1.5px #a87d02;vertical-align:-.12em;margin-right:.3em}
 .lbl{font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:#b8c0dc;margin:2px 0 8px}
 .glass{background:rgba(10,14,34,.78);border:1px solid rgba(255,255,255,.12);border-radius:16px;backdrop-filter:blur(10px)}
-#partyBox{margin-top:10px;background:rgba(10,14,30,.55);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;font:600 13px Inter,sans-serif;max-width:300px}
+#partyBox{pointer-events:auto;-webkit-user-select:text;user-select:text;width:280px;box-sizing:border-box;margin-top:10px;background:rgba(10,14,30,.55);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;font:600 13px Inter,sans-serif;max-width:300px}
 #partyBox .pb-h{font:800 11px Inter,sans-serif;letter-spacing:.18em;opacity:.85;margin-bottom:6px}#partyBox .pb-h span{color:#39d98a;letter-spacing:0;margin-left:6px}
 #partyBox .pb-m{padding:3px 0}#partyBox .pb-m button{margin-left:6px;background:none;border:0;color:#ff6b7d;cursor:pointer}
 #partyBox .pb-s{opacity:.7;font-weight:500}#partyBox .pb-i{display:flex;gap:6px;margin-top:8px}
-#partyBox input{flex:1;min-width:0;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:#fff;padding:7px 9px;font:600 13px Inter,sans-serif}
+#partyBox input{pointer-events:auto;-webkit-user-select:text;user-select:text;flex:1;min-width:120px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:#fff;padding:7px 9px;font:600 13px Inter,sans-serif}
 #partyBox button.p,#invBox button.p{background:#ffd23f;color:#141416;border:0;border-radius:8px;padding:7px 12px;font:800 12px Inter,sans-serif;cursor:pointer}
 #partyBox .pb-l{margin-top:8px;background:none;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:5px 10px;font:700 11px Inter,sans-serif;cursor:pointer}
-#invBox{position:fixed;top:70px;right:16px;z-index:60;display:flex;flex-direction:column;gap:8px}
+#invBox{pointer-events:auto;position:fixed;top:70px;right:16px;z-index:60;display:flex;flex-direction:column;gap:8px}
 #invBox .inv{background:#141a33;border:1px solid rgba(255,210,63,.6);border-radius:12px;padding:12px 14px;font:600 13px Inter,sans-serif;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 #invBox .inv div{display:flex;gap:8px;margin-top:8px}#invBox .inv button:not(.p){background:none;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:7px 12px;cursor:pointer}
 #mapLoad{position:fixed;inset:0;z-index:45;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:16px;transition:opacity .4s}
@@ -335,7 +335,7 @@ button{font-family:inherit;color:inherit}
 #fps{position:absolute;left:18px;bottom:18px;font:800 11px Inter;background:rgba(11,16,36,.5);padding:4px 8px;border-radius:6px}
 </style>
 
-<link rel="preload" href="assets/models.glb?v=mwoglm61" as="fetch" crossorigin><link rel="preload" href="assets/env.glb?v=mwoglm61" as="fetch" crossorigin><link rel="preload" href="assets/gear.glb?v=mwoglm61" as="fetch" crossorigin><link rel="preload" href="assets/extra.glb?v=mwoglm61" as="fetch" crossorigin>
+<link rel="preload" href="assets/models.glb?v=mwppvvvl" as="fetch" crossorigin><link rel="preload" href="assets/env.glb?v=mwppvvvl" as="fetch" crossorigin><link rel="preload" href="assets/gear.glb?v=mwppvvvl" as="fetch" crossorigin><link rel="preload" href="assets/extra.glb?v=mwppvvvl" as="fetch" crossorigin>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -512,19 +512,19 @@ button{font-family:inherit;color:inherit}
 <script src="lib/EffectComposer.js"></script>
 <script src="lib/RenderPass.js"></script>
 <script src="lib/ShaderPass.js"></script>
-<script src="lib/UnrealBloomPass.js"></script><script src="js/color.js?v=mwoglm61"></script>
-<script src="js/resorts_data.js?v=mwoglm61"></script>
-<script src="js/data.js?v=mwoglm61"></script>
-<script src="js/audio.js?v=mwoglm61"></script>
-<script src="js/rider.js?v=mwoglm61"></script>
-<script src="js/world.js?v=mwoglm61"></script>
-<script src="js/resort.js?v=mwoglm61"></script>
-<script src="js/lobby.js?v=mwoglm61"></script>
-<script src="js/game.js?v=mwoglm61"></script>
-<script src="js/fx.js?v=mwoglm61"></script>
-<script src="js/ui.js?v=mwoglm61"></script>
-<script src="js/firebase-config.js?v=mwoglm61"></script>
-<script src="js/account.js?v=mwoglm61"></script>
-<script src="js/net.js?v=mwoglm61"></script>
+<script src="lib/UnrealBloomPass.js"></script><script src="js/color.js?v=mwppvvvl"></script>
+<script src="js/resorts_data.js?v=mwppvvvl"></script>
+<script src="js/data.js?v=mwppvvvl"></script>
+<script src="js/audio.js?v=mwppvvvl"></script>
+<script src="js/rider.js?v=mwppvvvl"></script>
+<script src="js/world.js?v=mwppvvvl"></script>
+<script src="js/resort.js?v=mwppvvvl"></script>
+<script src="js/lobby.js?v=mwppvvvl"></script>
+<script src="js/game.js?v=mwppvvvl"></script>
+<script src="js/fx.js?v=mwppvvvl"></script>
+<script src="js/ui.js?v=mwppvvvl"></script>
+<script src="js/firebase-config.js?v=mwppvvvl"></script>
+<script src="js/account.js?v=mwppvvvl"></script>
+<script src="js/net.js?v=mwppvvvl"></script>
 </body>
 </html>

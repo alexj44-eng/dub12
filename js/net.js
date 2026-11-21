@@ -114,7 +114,9 @@ function netDraw(dt){if(mode!=='run'){for(const u in NET.remotes)NET.remotes[u].
 function netBoard(){const out=[];for(const u in NET.remotes){const R=NET.remotes[u];out.push({name:R.name,score:R.a[13]||0,online:1});}return out;}
 
 /* ---------- party panel in the lobby ---------- */
-function netUI(){const el=$('partyBox');if(!el)return;
+function netUI(){const el=$('partyBox');if(!el)return;const old=$('pbName'),keep=old?{v:old.value,f:document.activeElement===old,s:old.selectionStart}:null;   // redraws keep what you were typing
+  netUI_(el);const nw=$('pbName');if(keep&&nw){nw.value=keep.v;if(keep.f){nw.focus();try{nw.setSelectionRange(keep.s,keep.s);}catch(e){}}}}
+function netUI_(el){
   if(!FB.user){el.innerHTML='<div class="pb-h">PARTY</div><div class="pb-s">Sign in to play online with friends.</div>';return;}
   if(!NET.on){el.innerHTML='<div class="pb-h">PARTY</div><div class="pb-s">'+(NET.status||'Connecting…')+'</div>';return;}
   const m=NET.party?NET.party.m:{[NET.uid]:{n:NET.name}},lead=NET.party?NET.party.leader:NET.uid,esc=s=>String(s).replace(/</g,'&lt;');
